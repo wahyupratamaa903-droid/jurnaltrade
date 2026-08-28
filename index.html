@@ -3,69 +3,152 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Jurnal Trading Sheet Pro</title>
+  <title>Jurnal Trading Pro Analytics</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <style>
-    body { background: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .sheet-table th { background: #111827; border: 1px solid #1f2937; position: sticky; top: 0; z-index: 10; }
-    .sheet-table td { border: 1px solid #1f2937; white-space: nowrap; }
-    .sheet-table tr:hover { background: rgba(31, 41, 55, 0.4); }
+    body { background: #070a13; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .sheet-table th { background: #0f172a; border: 1px solid #1e293b; position: sticky; top: 0; z-index: 10; }
+    .sheet-table td { border: 1px solid #1e293b; white-space: nowrap; }
+    .sheet-table tr:hover { background: rgba(30, 41, 59, 0.5); }
+    .glass-card { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); }
   </style>
 </head>
-<body class="text-slate-200 text-xs min-h-screen p-2 md:p-4">
+<body class="text-slate-200 text-xs min-h-screen p-2 md:p-5 space-y-4">
 
   <!-- Top Metrics Bar -->
-  <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-3 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+  <header class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
     <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
-        <i class="fas fa-table-cells"></i>
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 text-slate-950 flex items-center justify-center font-black text-lg">
+        <i class="fas fa-chart-line"></i>
       </div>
       <div>
-        <h1 class="font-black text-sm text-slate-100 uppercase tracking-wide">Jurnal Trading Sheet</h1>
-        <p class="text-[10px] text-slate-400">Manual Entry • Auto Balance Calculation</p>
+        <h1 class="font-black text-base text-slate-100 uppercase tracking-wide">Jurnal Trading Analytics</h1>
+        <p class="text-[10px] text-slate-400">Equity Curve • Max Drawdown • Session & Pair Matrix</p>
       </div>
     </div>
 
-    <!-- Live Stat Summary -->
-    <div class="flex flex-wrap items-center gap-4 text-xs font-mono">
-      <div>
-        <span class="text-slate-500 text-[10px] block">MODAL AWAL</span>
-        <input type="number" id="initial-balance" value="2000000" onchange="updateCalculations()" class="bg-slate-950 border border-slate-700 rounded px-2 py-0.5 text-xs text-amber-400 font-bold w-28 focus:outline-none">
+    <!-- Live Balance Inputs -->
+    <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
+      <div class="bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
+        <span class="text-slate-500 text-[9px] uppercase block font-bold">Modal Awal</span>
+        <input type="number" id="initial-balance" value="2000000" onchange="updateAll()" class="bg-transparent text-amber-400 font-bold w-24 focus:outline-none">
       </div>
-      <div>
-        <span class="text-slate-500 text-[10px] block">EQUITY SAAT INI</span>
+      <div class="bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
+        <span class="text-slate-500 text-[9px] uppercase block font-bold">Equity Saat Ini</span>
         <span id="current-equity" class="font-black text-slate-100">Rp 2.000.000</span>
       </div>
-      <div>
-        <span class="text-slate-500 text-[10px] block">CAPITAL GAIN</span>
+      <div class="bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
+        <span class="text-slate-500 text-[9px] uppercase block font-bold">Capital Gain</span>
         <span id="capital-gain" class="font-black text-emerald-400">0.00%</span>
-      </div>
-      <div>
-        <span class="text-slate-500 text-[10px] block">WIN RATE</span>
-        <span id="win-rate" class="font-black text-blue-400">0%</span>
       </div>
     </div>
 
     <!-- Action Buttons -->
     <div class="flex items-center gap-2">
-      <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+      <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-950/50 transition">
         <i class="fas fa-plus"></i> Tambah Posisi
       </button>
-      <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
-        <i class="fas fa-file-csv"></i> Unduh CSV
+      <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition">
+        <i class="fas fa-file-csv"></i> CSV
       </button>
+    </div>
+  </header>
+
+  <!-- Key Statistics Grid -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+    <div class="glass-card rounded-xl p-3">
+      <span class="text-[10px] text-slate-400 font-bold uppercase block">Win Rate</span>
+      <p id="stat-winrate" class="text-lg font-black text-blue-400 mt-0.5">0%</p>
+      <span id="stat-winloss-count" class="text-[9px] text-slate-500 font-mono">0W - 0L</span>
+    </div>
+
+    <div class="glass-card rounded-xl p-3">
+      <span class="text-[10px] text-slate-400 font-bold uppercase block">Max Drawdown</span>
+      <p id="stat-mdd" class="text-lg font-black text-rose-400 mt-0.5">0.00%</p>
+      <span id="stat-mdd-nominal" class="text-[9px] text-slate-500 font-mono">Max: Rp 0</span>
+    </div>
+
+    <div class="glass-card rounded-xl p-3">
+      <span class="text-[10px] text-slate-400 font-bold uppercase block">Profit Factor</span>
+      <p id="stat-profit-factor" class="text-lg font-black text-emerald-400 mt-0.5">0.00</p>
+      <span class="text-[9px] text-slate-500 font-mono">Gross P / Gross L</span>
+    </div>
+
+    <div class="glass-card rounded-xl p-3">
+      <span class="text-[10px] text-slate-400 font-bold uppercase block">Actual R:R Ratio</span>
+      <p id="stat-actual-rr" class="text-lg font-black text-amber-400 mt-0.5">1 : 0.00</p>
+      <span class="text-[9px] text-slate-500 font-mono">Avg Win / Avg Loss</span>
+    </div>
+
+    <div class="glass-card rounded-xl p-3">
+      <span class="text-[10px] text-slate-400 font-bold uppercase block">Top Best Pair</span>
+      <p id="stat-top-pair" class="text-sm font-black text-amber-400 mt-1 truncate">-</p>
+      <span id="stat-top-pair-sub" class="text-[9px] text-slate-500 font-mono">Net: Rp 0</span>
+    </div>
+
+    <div class="glass-card rounded-xl p-3">
+      <span class="text-[10px] text-slate-400 font-bold uppercase block">Best Session</span>
+      <p id="stat-top-session" class="text-sm font-black text-emerald-400 mt-1 truncate">-</p>
+      <span id="stat-top-session-sub" class="text-[9px] text-slate-500 font-mono">Win: 0%</span>
+    </div>
+  </div>
+
+  <!-- Analytics Charts Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <!-- Main Equity Growth Line Chart -->
+    <div class="lg:col-span-8 glass-card rounded-2xl p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xs font-black text-slate-200 flex items-center gap-2">
+          <i class="fas fa-chart-area text-emerald-400"></i> Kurva Pertumbuhan & Penurunan Ekuitas (Growth Curve)
+        </h2>
+        <span class="text-[10px] font-mono text-slate-500">Live Simulation</span>
+      </div>
+      <div class="relative h-60 w-full">
+        <canvas id="equityChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Pair & Session Performance Matrix -->
+    <div class="lg:col-span-4 glass-card rounded-2xl p-4 flex flex-col justify-between space-y-4">
+      <div>
+        <h2 class="text-xs font-black text-slate-200 mb-2 flex items-center gap-2">
+          <i class="fas fa-scale-balanced text-amber-400"></i> Performa Berdasarkan Pair
+        </h2>
+        <div id="pair-performance-list" class="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800 pt-3">
+        <h2 class="text-xs font-black text-slate-200 mb-2 flex items-center gap-2">
+          <i class="fas fa-clock text-blue-400"></i> Performa Sesi Trading
+        </h2>
+        <div id="session-performance-list" class="grid grid-cols-3 gap-1.5 text-center">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Spreadsheet Table Container -->
-  <div class="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-    <div class="overflow-x-auto max-h-[78vh]">
+  <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
+    <div class="p-3 border-b border-slate-800 flex items-center justify-between">
+      <span class="font-bold text-xs text-slate-300 flex items-center gap-2">
+        <i class="fas fa-table text-slate-400"></i> Lembar Catatan Posisi
+      </span>
+      <span id="total-rows-badge" class="font-mono text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
+        0 Posisi Tercatat
+      </span>
+    </div>
+    <div class="overflow-x-auto max-h-[60vh]">
       <table class="sheet-table w-full text-left border-collapse font-mono text-[11px]">
         <thead>
           <tr class="text-[10px] text-slate-400 uppercase tracking-wider">
             <th class="p-2 text-center w-8">#</th>
             <th class="p-2">TANGGAL</th>
+            <th class="p-2 text-center">SESI</th>
             <th class="p-2 text-center">POSISI</th>
             <th class="p-2 text-right">LOT</th>
             <th class="p-2">INSTRUMEN</th>
@@ -75,14 +158,14 @@
             <th class="p-2 text-right">PROFIT</th>
             <th class="p-2 text-right">LOSS</th>
             <th class="p-2 text-right">PIPS</th>
-            <th class="p-2 min-w-[220px]">REASON (ANALISA) <i class="fas fa-hand-pointer text-[9px] text-slate-500"></i></th>
-            <th class="p-2 min-w-[220px]">INFORMATION (PSIKOLOGI) <i class="fas fa-hand-pointer text-[9px] text-slate-500"></i></th>
+            <th class="p-2 min-w-[220px]">REASON (ANALISA)</th>
+            <th class="p-2 min-w-[220px]">INFORMATION (PSIKOLOGI)</th>
             <th class="p-2 text-right">EQUITY</th>
             <th class="p-2 text-center">DOC</th>
             <th class="p-2 text-center">AKSI</th>
           </tr>
         </thead>
-        <tbody id="sheet-body" class="divide-y divide-slate-800">
+        <tbody id="sheet-body" class="divide-y divide-slate-800/80">
           <!-- Diisi via JS -->
         </tbody>
       </table>
@@ -90,7 +173,7 @@
   </div>
 
   <!-- Form Modal (Tambah & Edit Data) -->
-  <div id="entry-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 z-50">
+  <div id="entry-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-3 z-50">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 id="modal-title" class="font-black text-sm text-slate-100 flex items-center gap-2">
@@ -102,14 +185,22 @@
       <form id="trade-form" onsubmit="handleFormSubmit(event)" class="space-y-3">
         <input type="hidden" id="edit-id" value="">
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-3 gap-2">
           <div>
             <label class="text-[10px] text-slate-400 block mb-1">Tanggal</label>
-            <input type="text" id="m-date" placeholder="Contoh: 27/08/2026" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+            <input type="text" id="m-date" placeholder="28/08/2026" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 block mb-1">Sesi Market</label>
+            <select id="m-session" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-bold">
+              <option value="Asia">Asia (06-14 WIB)</option>
+              <option value="London">London (14-20 WIB)</option>
+              <option value="New York">New York (20-04 WIB)</option>
+            </select>
           </div>
           <div>
             <label class="text-[10px] text-slate-400 block mb-1">Instrumen / Pair</label>
-            <input type="text" id="m-pair" placeholder="EURUSD / XAUUSD" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 uppercase font-bold">
+            <input type="text" id="m-pair" placeholder="XAUUSD" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 uppercase font-bold">
           </div>
         </div>
 
@@ -145,7 +236,7 @@
             </select>
           </div>
           <div>
-            <label class="text-[10px] text-slate-400 block mb-1">R:R</label>
+            <label class="text-[10px] text-slate-400 block mb-1">R:R Plan</label>
             <input type="text" id="m-rr" placeholder="1 : 2" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
           </div>
         </div>
@@ -162,11 +253,11 @@
           </div>
           <div>
             <label class="text-[10px] text-slate-400 block mb-1">Nominal (Rp)</label>
-            <input type="number" id="m-nominal" placeholder="132000" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono font-bold">
+            <input type="number" id="m-nominal" placeholder="150000" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono font-bold">
           </div>
           <div>
             <label class="text-[10px] text-slate-400 block mb-1">Pips</label>
-            <input type="number" step="0.1" id="m-pips" placeholder="7.5" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono">
+            <input type="number" step="0.1" id="m-pips" placeholder="25.5" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono">
           </div>
         </div>
 
@@ -177,16 +268,16 @@
 
         <div>
           <label class="text-[10px] text-slate-400 block mb-1">Reason (Alasan Analisa / Setup)</label>
-          <textarea id="m-reason" rows="2" placeholder="Entry di sesi asia eksekusi..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"></textarea>
+          <textarea id="m-reason" rows="2" placeholder="Liquidity sweep pada Asian high, rejection candle konfirmasi di M15..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"></textarea>
         </div>
 
         <div>
-          <label class="text-[10px] text-slate-400 block mb-1">Information (Psikologi / Catatan)</label>
-          <textarea id="m-info" rows="2" placeholder="Kondisi emosi, disiplin pada rule..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"></textarea>
+          <label class="text-[10px] text-slate-400 block mb-1">Information (Psikologi / Evaluasi)</label>
+          <textarea id="m-info" rows="2" placeholder="Tenang dan disiplin menunggu konfirmasi setup..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"></textarea>
         </div>
 
         <div>
-          <label class="text-[10px] text-slate-400 block mb-1">Link Dokumentasi / Screenshot (Opsional)</label>
+          <label class="text-[10px] text-slate-400 block mb-1">Link Screenshot / TradingView (Opsional)</label>
           <input type="url" id="m-doc" placeholder="https://..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
         </div>
 
@@ -197,13 +288,14 @@
     </div>
   </div>
 
-  <!-- Detail View Modal (Popup Baca Analisa Lengkap) -->
+  <!-- Detail Modal (Popup Baca Lengkap) -->
   <div id="detail-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div>
           <span id="detail-pair" class="font-black text-amber-400 text-sm"></span>
           <span id="detail-side" class="ml-2 font-mono text-[10px] px-1.5 py-0.5 rounded"></span>
+          <span id="detail-session" class="ml-1 text-[10px] font-mono text-slate-400"></span>
         </div>
         <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-100"><i class="fas fa-times text-base"></i></button>
       </div>
@@ -225,12 +317,12 @@
 
         <div id="detail-doc-container" class="hidden">
           <a id="detail-doc-link" target="_blank" class="block w-full text-center py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-xl font-mono text-[11px] border border-slate-700 transition">
-            <i class="fas fa-image"></i> Buka Link Screenshot
+            <i class="fas fa-image mr-1"></i> Buka Link Screenshot
           </a>
         </div>
       </div>
 
-      <div class="flex gap-2 pt-2 border-t border-slate-800">
+      <div class="pt-2 border-t border-slate-800">
         <button id="detail-edit-btn" class="w-full py-2 bg-amber-600 hover:bg-amber-500 font-bold rounded-xl text-slate-950 text-xs transition">
           <i class="fas fa-edit mr-1"></i> Edit Data Ini
         </button>
@@ -244,14 +336,21 @@
 
     let trades = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
     let initialBalance = parseFloat(localStorage.getItem(BALANCE_KEY) || '2000000');
+    let equityChartInstance = null;
 
     document.getElementById('initial-balance').value = initialBalance;
+
+    function detectSession() {
+      const hour = new Date().getHours();
+      if (hour >= 6 && hour < 14) return 'Asia';
+      if (hour >= 14 && hour < 20) return 'London';
+      return 'New York';
+    }
 
     function saveToStorage() {
       localStorage.setItem(STORE_KEY, JSON.stringify(trades));
       localStorage.setItem(BALANCE_KEY, initialBalance.toString());
-      updateCalculations();
-      renderSheet();
+      updateAll();
     }
 
     function openModal(tradeId = null) {
@@ -264,6 +363,7 @@
           document.getElementById('modal-title').innerHTML = '<i class="fas fa-pen-to-square text-amber-400"></i> Edit Transaksi';
           document.getElementById('edit-id').value = item.id;
           document.getElementById('m-date').value = item.date;
+          document.getElementById('m-session').value = item.session || 'Asia';
           document.getElementById('m-pair').value = item.pair;
           document.getElementById('m-side').value = item.side;
           document.getElementById('m-lot').value = item.lot;
@@ -281,9 +381,9 @@
         document.getElementById('modal-title').innerHTML = '<i class="fas fa-pen-to-square text-emerald-400"></i> Catat Transaksi Baru';
         document.getElementById('edit-id').value = '';
         document.getElementById('submit-btn').textContent = 'Simpan ke Sheet';
-        // Auto set default tanggal hari ini
         const now = new Date();
         document.getElementById('m-date').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        document.getElementById('m-session').value = detectSession();
       }
 
       document.getElementById('entry-modal').classList.remove('hidden');
@@ -299,10 +399,11 @@
       const item = trades.find(t => t.id === id);
       if (!item) return;
 
-      document.getElementById('detail-pair').textContent = item.pair + ' (' + item.lot + ' Lot)';
+      document.getElementById('detail-pair').textContent = `${item.pair} (${item.lot} Lot)`;
       const sideEl = document.getElementById('detail-side');
       sideEl.textContent = item.side;
       sideEl.className = `font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${item.side === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`;
+      document.getElementById('detail-session').textContent = `• Sesi ${item.session || 'Asia'}`;
 
       document.getElementById('detail-reason').textContent = item.reason || '-';
       document.getElementById('detail-info').textContent = item.info || '-';
@@ -343,6 +444,7 @@
 
       const tradeData = {
         date: document.getElementById('m-date').value,
+        session: document.getElementById('m-session').value,
         pair: document.getElementById('m-pair').value.toUpperCase(),
         side: document.getElementById('m-side').value,
         lot: document.getElementById('m-lot').value,
@@ -378,27 +480,238 @@
       }
     }
 
-    function updateCalculations() {
+    function updateAll() {
       initialBalance = parseFloat(document.getElementById('initial-balance').value) || 0;
       localStorage.setItem(BALANCE_KEY, initialBalance.toString());
 
       let running = initialBalance;
-      let wins = 0;
+      let peak = initialBalance;
+      let maxDdAmount = 0;
+      let maxDdPercent = 0;
 
-      trades.forEach(t => {
-        if (t.status === 'TP' || t.status === 'SL+') wins++;
-        running += (t.profit - t.loss);
+      let totalGrossProfit = 0;
+      let totalGrossLoss = 0;
+      let winCount = 0;
+      let lossCount = 0;
+
+      const equityHistory = [initialBalance];
+      const labels = ['Modal Awal'];
+
+      const pairStats = {};
+      const sessionStats = {
+        Asia: { wins: 0, total: 0, pnl: 0 },
+        London: { wins: 0, total: 0, pnl: 0 },
+        'New York': { wins: 0, total: 0, pnl: 0 }
+      };
+
+      trades.forEach((t, idx) => {
+        const isWin = t.status === 'TP' || t.status === 'SL+';
+        const isLoss = t.status === 'SL';
+
+        if (isWin) {
+          winCount++;
+          totalGrossProfit += t.profit;
+        }
+        if (isLoss) {
+          lossCount++;
+          totalGrossLoss += t.loss;
+        }
+
+        const netTrade = (t.profit || 0) - (t.loss || 0);
+        running += netTrade;
         t.calculatedEquity = running;
+
+        // Drawdown Calculation
+        if (running > peak) {
+          peak = running;
+        } else {
+          const dd = peak - running;
+          const ddPct = peak > 0 ? (dd / peak) * 100 : 0;
+          if (ddPct > maxDdPercent) {
+            maxDdPercent = ddPct;
+            maxDdAmount = dd;
+          }
+        }
+
+        // Pair Performance
+        if (!pairStats[t.pair]) {
+          pairStats[t.pair] = { wins: 0, total: 0, pnl: 0 };
+        }
+        pairStats[t.pair].total++;
+        pairStats[t.pair].pnl += netTrade;
+        if (isWin) pairStats[t.pair].wins++;
+
+        // Session Performance
+        const sessKey = t.session || 'Asia';
+        if (sessionStats[sessKey]) {
+          sessionStats[sessKey].total++;
+          sessionStats[sessKey].pnl += netTrade;
+          if (isWin) sessionStats[sessKey].wins++;
+        }
+
+        labels.push(`${t.date} (${t.pair})`);
+        equityHistory.push(running);
       });
 
       const totalTrades = trades.length;
-      const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
+      const winRate = totalTrades > 0 ? ((winCount / totalTrades) * 100).toFixed(1) : 0;
       const gain = initialBalance > 0 ? (((running - initialBalance) / initialBalance) * 100).toFixed(2) : 0;
 
+      // Profit Factor
+      let profitFactor = '0.00';
+      if (totalGrossLoss === 0 && totalGrossProfit > 0) profitFactor = 'MAX';
+      else if (totalGrossLoss > 0) profitFactor = (totalGrossProfit / totalGrossLoss).toFixed(2);
+
+      // Actual R:R Ratio
+      const avgWin = winCount > 0 ? totalGrossProfit / winCount : 0;
+      const avgLoss = lossCount > 0 ? totalGrossLoss / lossCount : 0;
+      let actualRR = '-';
+      if (avgLoss > 0) actualRR = `1 : ${(avgWin / avgLoss).toFixed(2)}`;
+      else if (avgWin > 0) actualRR = `1 : ∞`;
+
+      // Top Pair
+      let bestPair = '-';
+      let bestPairPnL = 0;
+      Object.keys(pairStats).forEach(p => {
+        if (pairStats[p].pnl > bestPairPnL) {
+          bestPairPnL = pairStats[p].pnl;
+          const wr = ((pairStats[p].wins / pairStats[p].total) * 100).toFixed(0);
+          bestPair = `${p} (${wr}% WR)`;
+        }
+      });
+
+      // Best Session
+      let bestSession = '-';
+      let bestSessionWR = 0;
+      Object.keys(sessionStats).forEach(s => {
+        if (sessionStats[s].total > 0) {
+          const wr = (sessionStats[s].wins / sessionStats[s].total) * 100;
+          if (wr >= bestSessionWR) {
+            bestSessionWR = wr;
+            bestSession = `${s} (${wr.toFixed(0)}%)`;
+          }
+        }
+      });
+
+      // Update UI Header & Top Cards
       document.getElementById('current-equity').textContent = `Rp ${running.toLocaleString('id-ID')}`;
       document.getElementById('capital-gain').textContent = `${gain >= 0 ? '+' : ''}${gain}%`;
       document.getElementById('capital-gain').className = `font-black ${gain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-      document.getElementById('win-rate').textContent = `${winRate}%`;
+      document.getElementById('stat-winrate').textContent = `${winRate}%`;
+      document.getElementById('stat-winloss-count').textContent = `${winCount}W - ${lossCount}L (${totalTrades} Posisi)`;
+      document.getElementById('stat-mdd').textContent = `-${maxDdPercent.toFixed(2)}%`;
+      document.getElementById('stat-mdd-nominal').textContent = `Max DD: Rp ${maxDdAmount.toLocaleString('id-ID')}`;
+      document.getElementById('stat-profit-factor').textContent = profitFactor;
+      document.getElementById('stat-actual-rr').textContent = actualRR;
+      document.getElementById('stat-top-pair').textContent = bestPair;
+      document.getElementById('stat-top-pair-sub').textContent = `Net: Rp ${bestPairPnL.toLocaleString('id-ID')}`;
+      document.getElementById('stat-top-session').textContent = bestSession;
+      document.getElementById('stat-top-session-sub').textContent = `Total: ${totalTrades} Trade`;
+      document.getElementById('total-rows-badge').textContent = `${totalTrades} Posisi Tercatat`;
+
+      renderPairList(pairStats);
+      renderSessionList(sessionStats);
+      renderChart(labels, equityHistory);
+      renderSheet();
+    }
+
+    function renderPairList(pairStats) {
+      const container = document.getElementById('pair-performance-list');
+      const pairs = Object.keys(pairStats);
+      if (pairs.length === 0) {
+        container.innerHTML = '<p class="text-[10px] text-slate-500 py-2 text-center">Belum ada data pair</p>';
+        return;
+      }
+
+      container.innerHTML = pairs.map(p => {
+        const data = pairStats[p];
+        const wr = ((data.wins / data.total) * 100).toFixed(0);
+        const isPos = data.pnl >= 0;
+        return `
+          <div class="flex items-center justify-between bg-slate-950/60 border border-slate-800/80 px-2.5 py-1.5 rounded-lg text-[10px] font-mono">
+            <div>
+              <span class="font-bold text-amber-400">${p}</span>
+              <span class="text-slate-500 ml-1.5">(${data.total} trade)</span>
+            </div>
+            <div class="text-right">
+              <span class="text-blue-400 mr-2 font-bold">${wr}% WR</span>
+              <span class="${isPos ? 'text-emerald-400' : 'text-rose-400'} font-black">${isPos ? '+' : ''}Rp ${data.pnl.toLocaleString('id-ID')}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSessionList(sessionStats) {
+      const container = document.getElementById('session-performance-list');
+      container.innerHTML = Object.keys(sessionStats).map(s => {
+        const data = sessionStats[s];
+        const wr = data.total > 0 ? ((data.wins / data.total) * 100).toFixed(0) : 0;
+        const isPos = data.pnl >= 0;
+        return `
+          <div class="bg-slate-950/70 border border-slate-800 p-2 rounded-xl">
+            <span class="text-[9px] text-slate-400 uppercase font-bold block">${s}</span>
+            <p class="text-xs font-black text-slate-200 mt-0.5">${wr}% WR</p>
+            <p class="text-[9px] font-mono ${isPos ? 'text-emerald-400' : 'text-rose-400'} mt-0.5">${isPos ? '+' : ''}${Math.round(data.pnl/1000)}k</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderChart(labels, dataPoints) {
+      const ctx = document.getElementById('equityChart').getContext('2d');
+
+      if (equityChartInstance) {
+        equityChartInstance.destroy();
+      }
+
+      equityChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Ekuitas (Rp)',
+            data: dataPoints,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+            borderWidth: 2,
+            pointBackgroundColor: '#10b981',
+            pointRadius: dataPoints.length > 20 ? 1 : 3,
+            fill: true,
+            tension: 0.25
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `Equity: Rp ${context.parsed.y.toLocaleString('id-ID')}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 6 }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: {
+                color: '#64748b',
+                font: { size: 9 },
+                callback: function(value) {
+                  return (value / 1000).toLocaleString('id-ID') + 'k';
+                }
+              }
+            }
+          }
+        }
+      });
     }
 
     function renderSheet() {
@@ -406,7 +719,7 @@
       if (trades.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="16" class="p-8 text-center text-slate-500 font-sans">
+            <td colspan="17" class="p-8 text-center text-slate-500 font-sans">
               Belum ada data transaksi. Klik tombol "+ Tambah Posisi" di atas.
             </td>
           </tr>
@@ -429,6 +742,7 @@
           <tr>
             <td class="p-2 text-center text-slate-500">${idx + 1}</td>
             <td class="p-2 font-medium text-slate-300">${t.date}</td>
+            <td class="p-2 text-center text-[10px] text-slate-400 font-sans">${t.session || 'Asia'}</td>
             <td class="p-2 text-center">${sideBadge}</td>
             <td class="p-2 text-right text-slate-200 font-bold">${t.lot}</td>
             <td class="p-2 font-bold text-amber-400">${t.pair}</td>
@@ -439,13 +753,11 @@
             <td class="p-2 text-right font-bold text-rose-400">${t.loss ? t.loss.toLocaleString('id-ID') : '-'}</td>
             <td class="p-2 text-right text-slate-300">${t.pips}</td>
             
-            <!-- Reason Column with Click to View Modal -->
-            <td onclick="openDetailModal(${t.id})" class="p-2 text-slate-300 max-w-[200px] truncate cursor-pointer hover:text-amber-400 hover:bg-slate-800/80 transition" title="Klik untuk baca lengkap">
+            <td onclick="openDetailModal(${t.id})" class="p-2 text-slate-300 max-w-[200px] truncate cursor-pointer hover:text-amber-400 hover:bg-slate-800/80 transition" title="Klik untuk baca">
               <i class="fas fa-eye text-[9px] text-slate-500 mr-1"></i> ${t.reason}
             </td>
 
-            <!-- Info Column with Click to View Modal -->
-            <td onclick="openDetailModal(${t.id})" class="p-2 text-slate-400 max-w-[200px] truncate cursor-pointer hover:text-blue-400 hover:bg-slate-800/80 transition" title="Klik untuk baca lengkap">
+            <td onclick="openDetailModal(${t.id})" class="p-2 text-slate-400 max-w-[200px] truncate cursor-pointer hover:text-blue-400 hover:bg-slate-800/80 transition" title="Klik untuk baca">
               <i class="fas fa-eye text-[9px] text-slate-500 mr-1"></i> ${t.info}
             </td>
 
@@ -454,8 +766,8 @@
               ${t.doc ? `<a href="${t.doc}" target="_blank" class="text-blue-400 hover:underline"><i class="fas fa-arrow-up-right-from-square"></i></a>` : '-'}
             </td>
             <td class="p-2 text-center space-x-1">
-              <button onclick="openModal(${t.id})" title="Edit Transaksi" class="text-slate-500 hover:text-amber-400 p-1 transition"><i class="fas fa-pen-to-square"></i></button>
-              <button onclick="deleteRow(${t.id})" title="Hapus Transaksi" class="text-slate-500 hover:text-rose-400 p-1 transition"><i class="fas fa-trash-can"></i></button>
+              <button onclick="openModal(${t.id})" title="Edit" class="text-slate-500 hover:text-amber-400 p-1 transition"><i class="fas fa-pen-to-square"></i></button>
+              <button onclick="deleteRow(${t.id})" title="Hapus" class="text-slate-500 hover:text-rose-400 p-1 transition"><i class="fas fa-trash-can"></i></button>
             </td>
           </tr>
         `;
@@ -464,20 +776,19 @@
 
     function exportCSV() {
       if (trades.length === 0) return alert('Tidak ada data untuk diekspor!');
-      let csv = 'No,Tanggal,Posisi,Lot,Instrumen,RR,Risk,Status,Profit,Loss,Pips,Reason,Information,Equity\n';
+      let csv = 'No,Tanggal,Sesi,Posisi,Lot,Instrumen,RR,Risk,Status,Profit,Loss,Pips,Reason,Information,Equity\n';
       trades.forEach((t, i) => {
-        csv += `"${i+1}","${t.date}","${t.side}","${t.lot}","${t.pair}","${t.rr}","${t.risk}","${t.status}","${t.profit}","${t.loss}","${t.pips}","${t.reason}","${t.info}","${t.calculatedEquity}"\n`;
+        csv += `"${i+1}","${t.date}","${t.session||'Asia'}","${t.side}","${t.lot}","${t.pair}","${t.rr}","${t.risk}","${t.status}","${t.profit}","${t.loss}","${t.pips}","${t.reason}","${t.info}","${t.calculatedEquity}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `jurnal_trading_${Date.now()}.csv`;
+      a.download = `jurnal_analytics_${Date.now()}.csv`;
       a.click();
     }
 
-    updateCalculations();
-    renderSheet();
+    updateAll();
   </script>
 </body>
 </html>
