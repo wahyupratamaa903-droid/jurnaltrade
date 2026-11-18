@@ -1,5 +1,42 @@
 body { background: #070a13; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .sheet-table th { background: #0f172a; border: 1px solid #1e293b; position: sticky; top: 0; z-index: 10; }
-    .sheet-table td { border: 1px solid #1e293b; white-space: nowrap; }
-    .sheet-table tr:hover { background: rgba(30, 41, 59, 0.5); }
-    .glass-card { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); }
+.sheet-table th { background: #0f172a; border: 1px solid #1e293b; position: sticky; top: 0; z-index: 10; }
+.sheet-table td { border: 1px solid #1e293b; white-space: nowrap; }
+.sheet-table tr:hover { background: rgba(30, 41, 59, 0.5); }
+.glass-card { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); }
+
+/* Animasi Fade-In & Scale untuk Pop-up Modal */
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-animate-backdrop {
+  animation: backdropFadeIn 0.2s ease-out forwards;
+}
+
+.modal-animate-box {
+  animation: modalScaleIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Animasi Halus Saat Baris Transaksi Dihapus */
+.trade-row {
+  transition: opacity 0.28s ease, transform 0.28s ease, background-color 0.2s ease;
+}
+
+.row-removing {
+  opacity: 0 !important;
+  transform: translateX(24px);
+  background-color: rgba(244, 63, 94, 0.18) !important;
+  pointer-events: none;
+}

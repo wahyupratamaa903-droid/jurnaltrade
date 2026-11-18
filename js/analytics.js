@@ -1,6 +1,6 @@
 let equityChartInstance = null;
 
-function updateAll() {
+function calculateMetrics() {
   initialBalance = parseFloat(document.getElementById('initial-balance').value) || 0;
   localStorage.setItem(BALANCE_KEY, initialBalance.toString());
 
@@ -70,35 +70,53 @@ function updateAll() {
     equityHistory.push(running);
   });
 
+  return {
+    running,
+    maxDdAmount,
+    maxDdPercent,
+    totalGrossProfit,
+    totalGrossLoss,
+    winCount,
+    lossCount,
+    equityHistory,
+    labels,
+    pairStats,
+    sessionStats
+  };
+}
+
+// Memperbarui kartu statistik & grafik (dipanggil hanya saat data berubah)
+function updateChartsAndStats() {
+  const m = calculateMetrics();
   const totalTrades = trades.length;
-  const winRate = totalTrades > 0 ? ((winCount / totalTrades) * 100).toFixed(1) : 0;
-  const gain = initialBalance > 0 ? (((running - initialBalance) / initialBalance) * 100).toFixed(2) : 0;
+  const winRate = totalTrades > 0 ? ((m.winCount / totalTrades) * 100).toFixed(1) : 0;
+  const gain = initialBalance > 0 ? (((m.running - initialBalance) / initialBalance) * 100).toFixed(2) : 0;
 
   let profitFactor = '0.00';
-  if (totalGrossLoss === 0 && totalGrossProfit > 0) profitFactor = 'MAX';
-  else if (totalGrossLoss > 0) profitFactor = (totalGrossProfit / totalGrossLoss).toFixed(2);
+  if (m.totalGrossLoss === 0 && m.totalGrossProfit > 0) profitFactor = 'MAX';
+  else if (m.totalGrossLoss > 0) profitFactor = (m.totalGrossProfit / m.totalGrossLoss).toFixed(2);
 
-  const avgWin = winCount > 0 ? totalGrossProfit / winCount : 0;
-  const avgLoss = lossCount > 0 ? totalGrossLoss / lossCount : 0;
+  const avgWin = m.winCount > 0 ? m.totalGrossProfit / m.winCount : 0;
+  const avgLoss = m.lossCount > 0 ? m.totalGrossLoss / m.lossCount : 0;
   let actualRR = '-';
   if (avgLoss > 0) actualRR = `1 : ${(avgWin / avgLoss).toFixed(2)}`;
   else if (avgWin > 0) actualRR = `1 : ∞`;
 
   let bestPair = '-';
   let bestPairPnL = 0;
-  Object.keys(pairStats).forEach(p => {
-    if (pairStats[p].pnl > bestPairPnL) {
-      bestPairPnL = pairStats[p].pnl;
-      const wr = ((pairStats[p].wins / pairStats[p].total) * 100).toFixed(0);
+  Object.keys(m.pairStats).forEach(p => {
+    if (m.pairStats[p].pnl > bestPairPnL) {
+      bestPairPnL = m.pairStats[p].pnl;
+      const wr = ((m.pairStats[p].wins / m.pairStats[p].total) * 100).toFixed(0);
       bestPair = `${p} (${wr}% WR)`;
     }
   });
 
   let bestSession = '-';
   let bestSessionWR = 0;
-  Object.keys(sessionStats).forEach(s => {
-    if (sessionStats[s].total > 0) {
-      const wr = (sessionStats[s].wins / sessionStats[s].total) * 100;
+  Object.keys(m.sessionStats).forEach(s => {
+    if (m.sessionStats[s].total > 0) {
+      const wr = (m.sessionStats[s].wins / m.sessionStats[s].total) * 100;
       if (wr >= bestSessionWR) {
         bestSessionWR = wr;
         bestSession = `${s} (${wr.toFixed(0)}%)`;
@@ -106,24 +124,28 @@ function updateAll() {
     }
   });
 
-  document.getElementById('current-equity').textContent = `Rp ${running.toLocaleString('id-ID')}`;
+  document.getElementById('current-equity').textContent = `Rp ${m.running.toLocaleString('id-ID')}`;
   document.getElementById('capital-gain').textContent = `${gain >= 0 ? '+' : ''}${gain}%`;
   document.getElementById('capital-gain').className = `font-black ${gain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
   document.getElementById('stat-winrate').textContent = `${winRate}%`;
-  document.getElementById('stat-winloss-count').textContent = `${winCount}W - ${lossCount}L (${totalTrades} Posisi)`;
-  document.getElementById('stat-mdd').textContent = `-${maxDdPercent.toFixed(2)}%`;
-  document.getElementById('stat-mdd-nominal').textContent = `Max DD: Rp ${maxDdAmount.toLocaleString('id-ID')}`;
+  document.getElementById('stat-winloss-count').textContent = `${m.winCount}W - ${m.lossCount}L (${totalTrades} Posisi)`;
+  document.getElementById('stat-mdd').textContent = `-${m.maxDdPercent.toFixed(2)}%`;
+  document.getElementById('stat-mdd-nominal').textContent = `Max DD: Rp ${m.maxDdAmount.toLocaleString('id-ID')}`;
   document.getElementById('stat-profit-factor').textContent = profitFactor;
   document.getElementById('stat-actual-rr').textContent = actualRR;
   document.getElementById('stat-top-pair').textContent = bestPair;
   document.getElementById('stat-top-pair-sub').textContent = `Net: Rp ${bestPairPnL.toLocaleString('id-ID')}`;
   document.getElementById('stat-top-session').textContent = bestSession;
   document.getElementById('stat-top-session-sub').textContent = `Total: ${totalTrades} Trade`;
-  document.getElementById('total-rows-badge').textContent = `${totalTrades} Posisi Tercatat`;
 
-  renderPairList(pairStats);
-  renderSessionList(sessionStats);
-  renderChart(labels, equityHistory);
+  renderPairList(m.pairStats);
+  renderSessionList(m.sessionStats);
+  renderChart(m.labels, m.equityHistory);
+}
+
+// Memperbarui seluruh tampilan (Statistik + Grafik + Tabel)
+function updateAll() {
+  updateChartsAndStats();
   renderSheet();
 }
 
@@ -172,7 +194,16 @@ function renderSessionList(sessionStats) {
 
 function renderChart(labels, dataPoints) {
   const ctx = document.getElementById('equityChart').getContext('2d');
-  if (equityChartInstance) equityChartInstance.destroy();
+  const ptRadius = dataPoints.length > 20 ? 1 : 3;
+
+  // Perbarui data langsung tanpa menghancurkan canvas jika chart sudah ada
+  if (equityChartInstance) {
+    equityChartInstance.data.labels = labels;
+    equityChartInstance.data.datasets[0].data = dataPoints;
+    equityChartInstance.data.datasets[0].pointRadius = ptRadius;
+    equityChartInstance.update();
+    return;
+  }
 
   equityChartInstance = new Chart(ctx, {
     type: 'line',
@@ -185,7 +216,7 @@ function renderChart(labels, dataPoints) {
         backgroundColor: 'rgba(16, 185, 129, 0.08)',
         borderWidth: 2,
         pointBackgroundColor: '#10b981',
-        pointRadius: dataPoints.length > 20 ? 1 : 3,
+        pointRadius: ptRadius,
         fill: true,
         tension: 0.25
       }]

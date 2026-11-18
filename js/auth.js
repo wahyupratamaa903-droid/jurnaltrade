@@ -87,13 +87,16 @@ async function loginSuccess(uKey, email) {
   if (emailEl) emailEl.textContent = email;
 
   await loadUserData(uKey);
+  startAutoSync();
 }
 
 function logoutUser() {
+  stopAutoSync();
   localStorage.removeItem(SESSION_USER_KEY);
   localStorage.removeItem(SESSION_USER_KEY + '_email');
   currentUserKey = null;
   currentUserEmail = null;
+  lastSyncedAt = 0;
   trades = [];
   initialBalance = 2000000;
   document.getElementById('initial-balance').value = initialBalance;
@@ -121,6 +124,7 @@ async function loadUserData(uKey) {
     if (cloudData) {
       trades = cloudData.trades || [];
       initialBalance = typeof cloudData.initialBalance === 'number' ? cloudData.initialBalance : 2000000;
+      lastSyncedAt = cloudData.updatedAt || Date.now();
     } else if (!localBackup) {
       trades = [];
       initialBalance = 2000000;

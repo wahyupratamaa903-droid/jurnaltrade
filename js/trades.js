@@ -1,3 +1,8 @@
+// Filter tabel hanya memanggil renderSheet() tanpa menggambar ulang Chart.js
+function applyTableFilters() {
+  renderSheet();
+}
+
 function openModal(tradeId = null) {
   const form = document.getElementById('trade-form');
   form.reset();
@@ -31,13 +36,15 @@ function openModal(tradeId = null) {
     document.getElementById('m-session').value = detectSession();
   }
 
-  document.getElementById('entry-modal').classList.remove('hidden');
-  document.getElementById('entry-modal').classList.add('flex');
+  const modal = document.getElementById('entry-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex', 'modal-animate-backdrop');
 }
 
 function closeModal() {
-  document.getElementById('entry-modal').classList.add('hidden');
-  document.getElementById('entry-modal').classList.remove('flex');
+  const modal = document.getElementById('entry-modal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex', 'modal-animate-backdrop');
 }
 
 function openDetailModal(id) {
@@ -67,13 +74,15 @@ function openDetailModal(id) {
     openModal(item.id);
   };
 
-  document.getElementById('detail-modal').classList.remove('hidden');
-  document.getElementById('detail-modal').classList.add('flex');
+  const modal = document.getElementById('detail-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex', 'modal-animate-backdrop');
 }
 
 function closeDetailModal() {
-  document.getElementById('detail-modal').classList.add('hidden');
-  document.getElementById('detail-modal').classList.remove('flex');
+  const modal = document.getElementById('detail-modal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex', 'modal-animate-backdrop');
 }
 
 function handleFormSubmit(e) {
@@ -118,25 +127,56 @@ function handleFormSubmit(e) {
 
 function deleteRow(id) {
   if (confirm('Hapus baris transaksi ini?')) {
-    trades = trades.filter(t => t.id !== id);
-    saveToStorage();
+    const rowEl = document.querySelector(`tr[data-trade-id="${id}"]`);
+    if (rowEl) {
+      rowEl.classList.add('row-removing');
+      setTimeout(() => {
+        trades = trades.filter(t => t.id !== id);
+        saveToStorage();
+      }, 280);
+    } else {
+      trades = trades.filter(t => t.id !== id);
+      saveToStorage();
+    }
   }
 }
 
 function renderSheet() {
   const tbody = document.getElementById('sheet-body');
-  if (trades.length === 0) {
+  const badge = document.getElementById('total-rows-badge');
+
+  const qPair = (document.getElementById('filter-pair')?.value || '').trim().toUpperCase();
+  const qSession = document.getElementById('filter-session')?.value || 'ALL';
+  const qStatus = document.getElementById('filter-status')?.value || 'ALL';
+
+  const indexedTrades = trades.map((t, i) => ({ ...t, origIndex: i + 1 }));
+  const filtered = indexedTrades.filter(t => {
+    const matchPair = !qPair || (t.pair || '').includes(qPair);
+    const matchSess = qSession === 'ALL' || (t.session || 'Asia') === qSession;
+    const matchStat = qStatus === 'ALL' || t.status === qStatus;
+    return matchPair && matchSess && matchStat;
+  });
+
+  if (badge) {
+    badge.textContent = filtered.length === trades.length
+      ? `${trades.length} Posisi Tercatat`
+      : `${filtered.length} dari ${trades.length} Posisi`;
+  }
+
+  if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="17" class="p-8 text-center text-slate-500 font-sans">
-          Belum ada data transaksi. Klik tombol "+ Tambah Posisi" di atas.
+          ${trades.length === 0
+            ? 'Belum ada data transaksi. Klik tombol "+ Tambah Posisi" di atas.'
+            : 'Tidak ada transaksi yang cocok dengan filter.'}
         </td>
       </tr>
     `;
     return;
   }
 
-  tbody.innerHTML = trades.map((t, idx) => {
+  tbody.innerHTML = filtered.map((t) => {
     const sideBadge = t.side === 'BUY'
       ? '<span class="bg-emerald-950/80 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded text-[9px] font-bold">BUY</span>'
       : '<span class="bg-rose-950/80 text-rose-400 border border-rose-800 px-1.5 py-0.5 rounded text-[9px] font-bold">SELL</span>';
@@ -147,9 +187,11 @@ function renderSheet() {
     else if (t.status === 'SL+') statusBadge = '<span class="bg-yellow-500 text-slate-950 font-black px-1.5 py-0.5 rounded text-[9px]">SL+</span>';
     else statusBadge = '<span class="bg-slate-700 text-slate-300 font-bold px-1.5 py-0.5 rounded text-[9px]">BE</span>';
 
+    const eqValue = typeof t.calculatedEquity === 'number' ? t.calculatedEquity : initialBalance;
+
     return `
-      <tr>
-        <td class="p-2 text-center text-slate-500">${idx + 1}</td>
+      <tr data-trade-id="${t.id}" class="trade-row">
+        <td class="p-2 text-center text-slate-500">${t.origIndex}</td>
         <td class="p-2 font-medium text-slate-300">${t.date}</td>
         <td class="p-2 text-center text-[10px] text-slate-400 font-sans">${t.session || 'Asia'}</td>
         <td class="p-2 text-center">${sideBadge}</td>
@@ -167,7 +209,7 @@ function renderSheet() {
         <td onclick="openDetailModal(${t.id})" class="p-2 text-slate-400 max-w-[200px] truncate cursor-pointer hover:text-blue-400 hover:bg-slate-800/80 transition" title="Klik untuk baca">
           <i class="fas fa-eye text-[9px] text-slate-500 mr-1"></i> ${t.info}
         </td>
-        <td class="p-2 text-right font-bold text-slate-100">Rp ${t.calculatedEquity.toLocaleString('id-ID')}</td>
+        <td class="p-2 text-right font-bold text-slate-100">Rp ${eqValue.toLocaleString('id-ID')}</td>
         <td class="p-2 text-center">
           ${t.doc ? `<a href="${t.doc}" target="_blank" class="text-blue-400 hover:underline"><i class="fas fa-arrow-up-right-from-square"></i></a>` : '-'}
         </td>
@@ -182,11 +224,9 @@ function renderSheet() {
 
 function exportCSV() {
   if (trades.length === 0) return alert('Tidak ada data untuk diekspor!');
-  let csv = 'No,Tanggal,Sesi,Posisi,Lot,Instrumen,RR,Risk,Status,Profit,Loss,Pips,Reason,Information,Equity
-';
+  let csv = 'No,Tanggal,Sesi,Posisi,Lot,Instrumen,RR,Risk,Status,Profit,Loss,Pips,Reason,Information,Equity\n';
   trades.forEach((t, i) => {
-    csv += `"${i+1}","${t.date}","${t.session||'Asia'}","${t.side}","${t.lot}","${t.pair}","${t.rr}","${t.risk}","${t.status}","${t.profit}","${t.loss}","${t.pips}","${t.reason}","${t.info}","${t.calculatedEquity}"
-`;
+    csv += `"${i+1}","${t.date}","${t.session||'Asia'}","${t.side}","${t.lot}","${t.pair}","${t.rr}","${t.risk}","${t.status}","${t.profit}","${t.loss}","${t.pips}","${t.reason}","${t.info}","${t.calculatedEquity}"\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
