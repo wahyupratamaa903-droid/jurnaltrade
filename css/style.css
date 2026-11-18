@@ -118,14 +118,16 @@ input[type="number"] {
 @media (max-width: 767px) {
   #entry-modal.flex,
   #detail-modal.flex,
-  #account-modal.flex {
+  #account-modal.flex,
+  #ai-analyst-modal.flex {
     align-items: flex-end !important;
     padding: 0 !important;
   }
 
   #entry-modal .modal-animate-box,
   #detail-modal .modal-animate-box,
-  #account-modal .modal-animate-box {
+  #account-modal .modal-animate-box,
+  #ai-analyst-modal .modal-animate-box {
     max-width: 100% !important;
     width: 100% !important;
     border-bottom-left-radius: 0 !important;

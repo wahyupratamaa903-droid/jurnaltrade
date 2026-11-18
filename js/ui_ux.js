@@ -170,7 +170,7 @@ function initMobileFloatingButton() {
 
 // 6. Bottom Sheet Drag Handle & Swipe-Down Close untuk Layar HP
 function initBottomSheetUX() {
-  const modalIds = ['entry-modal', 'detail-modal', 'account-modal'];
+  const modalIds = ['entry-modal', 'detail-modal', 'account-modal', 'ai-analyst-modal'];
 
   modalIds.forEach(id => {
     const backdrop = document.getElementById(id);
@@ -252,7 +252,7 @@ function initPullToRefresh() {
   function isAnyModalOpen() {
     const auth = document.getElementById('auth-overlay');
     if (auth && !auth.classList.contains('hidden')) return true;
-    return ['entry-modal', 'detail-modal', 'account-modal'].some(id => {
+    return ['entry-modal', 'detail-modal', 'account-modal', 'ai-analyst-modal'].some(id => {
       const m = document.getElementById(id);
       return m && !m.classList.contains('hidden');
     });

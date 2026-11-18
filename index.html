@@ -118,6 +118,9 @@
       <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition">
         <i class="fas fa-file-csv"></i> CSV
       </button>
+      <button onclick="openAiAnalystModal()" class="bg-purple-600/90 hover:bg-purple-500 text-white font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-lg shadow-purple-950/50 transition">
+        <i class="fas fa-wand-magic-sparkles"></i> AI Copilot
+      </button>
     </div>
   </header>
 
@@ -329,6 +332,25 @@
       </div>
 
       <form id="trade-form" onsubmit="handleFormSubmit(event)" class="space-y-3">
+        <!-- AI Auto-Fill Transaksi dari Perintah Bebas -->
+        <div class="bg-gradient-to-r from-purple-950/50 via-slate-950 to-emerald-950/40 border border-purple-500/30 rounded-xl p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fas fa-wand-magic-sparkles text-purple-400"></i> AI Auto-Fill Jurnal
+            </span>
+            <span class="text-[9px] text-slate-400 font-mono">Isi semua kolom otomatis</span>
+          </div>
+          <div class="flex gap-1.5">
+            <input type="text" id="ai-autofill-input"
+              placeholder="Contoh: buy xauusd 0.05 sesi london tp 450rb rr 1:2 pips 30 karena sweep asian low"
+              class="flex-1 bg-slate-950/90 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-purple-400">
+            <button type="button" id="ai-autofill-btn" onclick="runAiAutoFill()"
+              class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] shrink-0 transition flex items-center gap-1">
+              <i class="fas fa-bolt"></i> Isi
+            </button>
+          </div>
+          <div id="ai-autofill-status" class="hidden text-[10px] font-mono leading-relaxed"></div>
+        </div>
         <input type="hidden" id="edit-id" value="">
 
         <div class="grid grid-cols-3 gap-2">
@@ -352,6 +374,20 @@
 
         <!-- Tombol Cepat Pair Favorit -->
         <div id="pair-presets-container" class="flex flex-wrap items-center gap-1"></div>
+
+        <!-- Radar Berita Real-Time Situs Terpercaya -->
+        <div class="bg-slate-950/90 border border-blue-500/25 rounded-xl p-2.5 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[10px] font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fas fa-newspaper text-blue-400"></i> Radar Berita & Sentimen Pair
+            </span>
+            <button type="button" id="news-radar-btn" onclick="fetchPairNewsRadar()"
+              class="px-2.5 py-1 rounded-lg bg-blue-600/25 hover:bg-blue-600/40 border border-blue-500/40 text-blue-300 font-mono text-[10px] font-bold transition flex items-center gap-1">
+              <i class="fas fa-satellite-dish"></i> Cek Berita Live
+            </button>
+          </div>
+          <div id="news-radar-result" class="hidden bg-slate-900/70 border border-slate-800 rounded-lg p-2.5 space-y-2"></div>
+        </div>
 
         <div class="grid grid-cols-3 gap-2">
           <div>
@@ -490,7 +526,7 @@
 
   <!-- Detail Modal (Popup Baca Lengkap) -->
   <div id="detail-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-    <div class="modal-animate-box bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
+    <div class="modal-animate-box bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div>
           <span id="detail-pair" class="font-black text-amber-400 text-sm"></span>
@@ -562,6 +598,38 @@
         </div>
       </div>
 
+      <!-- Brankas API Key Multi-Provider (Tersimpan Lokal & Aman di Perangkat) -->
+      <form onsubmit="saveAiVaultFromUI(event)" class="bg-slate-950/80 border border-purple-500/30 rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fas fa-key text-purple-400"></i> Brankas API Key AI & Berita
+          </span>
+          <span id="vault-status-badge" class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            Belum Diisi
+          </span>
+        </div>
+        <p class="text-[10px] text-slate-400 leading-relaxed">
+          Kunci hanya disimpan di browser HP Anda (tidak masuk ke GitHub). Sistem otomatis failover jika salah satu penuh.
+        </p>
+
+        <div class="space-y-1.5 font-mono text-[11px]">
+          <input type="password" id="vault-groq" placeholder="Groq API Key (gsk_...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200">
+          <input type="password" id="vault-cerebras" placeholder="Cerebras API Key (csk-...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200">
+          <div class="grid grid-cols-2 gap-1.5">
+            <input type="password" id="vault-or1" placeholder="OpenRouter Utama (sk-or-...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
+            <input type="password" id="vault-or2" placeholder="OpenRouter Cadangan" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
+          </div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <input type="password" id="vault-exa" placeholder="Exa Search Key (Berita)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
+            <input type="password" id="vault-jina" placeholder="Jina AI Key (jina_...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-xs transition">
+          Simpan API Key ke Perangkat
+        </button>
+      </form>
+
       <!-- Ganti Password -->
       <form id="acc-pass-form" onsubmit="handleChangePassword(event)" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
         <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
@@ -577,6 +645,47 @@
           Simpan Password Baru
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Tanya AI Analyst (Evaluasi Jurnal Bebas) -->
+  <div id="ai-analyst-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="modal-animate-box bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-black text-sm text-slate-100 flex items-center gap-2">
+            <i class="fas fa-robot text-purple-400"></i> AI Trading Copilot
+          </h3>
+          <p class="text-[10px] text-slate-400 mt-0.5">Tanya apa saja tentang pola profit, loss & kebiasaan jurnal Anda</p>
+        </div>
+        <button onclick="closeAiAnalystModal()" class="text-slate-400 hover:text-slate-100 text-base"><i class="fas fa-times"></i></button>
+      </div>
+
+      <div class="flex flex-wrap gap-1.5 font-mono text-[10px]">
+        <button type="button" onclick="askAiJournalAnalyst('Analisa pola win dan loss terbesar dari jurnal trading saya sejauh ini.')"
+          class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+          Pola Win & Loss
+        </button>
+        <button type="button" onclick="askAiJournalAnalyst('Sesi dan pair mana yang paling menguntungkan dan mana yang sebaiknya saya kurangi?')"
+          class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+          Pair & Sesi Terbaik
+        </button>
+        <button type="button" onclick="askAiJournalAnalyst('Evaluasi catatan psikologi saya, apakah emosi sering memicu loss?')"
+          class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+          Cek Pengaruh Psikologi
+        </button>
+      </div>
+
+      <div class="flex gap-2">
+        <input type="text" id="ai-analyst-question" placeholder="Tulis pertanyaan bebas tentang jurnal Anda..."
+          class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-400">
+        <button type="button" id="ai-analyst-submit" onclick="askAiJournalAnalyst()"
+          class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 transition">
+          Tanya
+        </button>
+      </div>
+
+      <div id="ai-analyst-output" class="hidden bg-slate-950/90 border border-slate-800 rounded-xl p-3.5 max-h-72 overflow-y-auto"></div>
     </div>
   </div>
 
@@ -610,6 +719,8 @@
     }
   </script>
   <script src="js/ui_ux.js"></script>
+  <script src="js/api_vault.js"></script>
+  <script src="js/ai_copilot.js"></script>
   <script src="js/auth.js"></script>
 </body>
 </html>
