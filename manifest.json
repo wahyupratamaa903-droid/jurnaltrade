@@ -1,0 +1,19 @@
+{
+  "name": "Jurnal Trading Analytics",
+  "short_name": "JurnalTrade",
+  "description": "Jurnal Trading Analytics & Manajemen Risiko Cloud",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070a13",
+  "theme_color": "#070a13",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

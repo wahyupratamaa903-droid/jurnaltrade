@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jurnal Trading Pro Analytics</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#070a13">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
@@ -55,11 +58,19 @@
   </div>
 
   <!-- BAR INFO AKUN & TOMBOL LOGOUT DI POJOK KANAN ATAS -->
-  <div id="user-Session-bar" class="hidden bg-slate-900/90 border-b border-slate-800 px-4 py-1.5 text-[11px] flex justify-between items-center text-slate-300">
+  <div id="user-Session-bar" class="hidden bg-slate-900/90 border-b border-slate-800 px-4 py-1.5 text-[11px] flex flex-wrap justify-between items-center gap-2 text-slate-300">
     <span>👤 Akun: <strong id="active-user-email" class="text-emerald-400 font-mono">-</strong></span>
-    <button onclick="logoutUser()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded text-[10px] font-bold transition">
-      Keluar (Logout)
-    </button>
+    <div class="flex items-center gap-1.5">
+      <button id="pwa-install-btn" onclick="triggerPwaInstall()" class="hidden bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded text-[10px] font-bold transition">
+        <i class="fas fa-download mr-1"></i>Instal App
+      </button>
+      <button onclick="openAccountModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-0.5 rounded text-[10px] font-bold transition">
+        <i class="fas fa-user-gear mr-1 text-amber-400"></i>Akun & Backup
+      </button>
+      <button onclick="logoutUser()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded text-[10px] font-bold transition">
+        Keluar
+      </button>
+    </div>
   </div>
 
 
@@ -320,6 +331,9 @@
           </div>
         </div>
 
+        <!-- Tombol Cepat Pair Favorit -->
+        <div id="pair-presets-container" class="flex flex-wrap items-center gap-1"></div>
+
         <div class="grid grid-cols-3 gap-2">
           <div>
             <label class="text-[10px] text-slate-400 block mb-1">Posisi</label>
@@ -497,11 +511,85 @@
     </div>
   </div>
 
-        <script src="js/config.js"></script>
+        <!-- Modal Akun, Ganti Password & Backup/Restore JSON -->
+  <div id="account-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="modal-animate-box bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-black text-sm text-slate-100 flex items-center gap-2">
+            <i class="fas fa-user-shield text-amber-400"></i> Pengaturan Akun & Cadangan
+          </h3>
+          <p id="acc-modal-email" class="text-[10px] text-emerald-400 font-mono mt-0.5">-</p>
+        </div>
+        <button onclick="closeAccountModal()" class="text-slate-400 hover:text-slate-100 text-base"><i class="fas fa-times"></i></button>
+      </div>
+
+      <!-- Backup & Restore JSON -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-2">
+        <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">
+          <i class="fas fa-database mr-1"></i> Cadangan Data Utuh (JSON)
+        </span>
+        <p class="text-[10px] text-slate-400 leading-relaxed">
+          Simpan salinan penuh seluruh transaksi dan modal awal ke memori HP, atau pulihkan dari file cadangan.
+        </p>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button type="button" onclick="exportBackupJSON()" class="py-2 px-3 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 font-mono text-[10px] font-bold transition">
+            <i class="fas fa-download mr-1"></i> Export JSON
+          </button>
+          <label class="py-2 px-3 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] font-bold text-center cursor-pointer transition">
+            <i class="fas fa-upload mr-1"></i> Restore JSON
+            <input type="file" accept=".json" onchange="handleRestoreJSON(event)" class="hidden">
+          </label>
+        </div>
+      </div>
+
+      <!-- Ganti Password -->
+      <form id="acc-pass-form" onsubmit="handleChangePassword(event)" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+          <i class="fas fa-key mr-1"></i> Ganti Password Akun
+        </span>
+        <input type="password" id="acc-old-pass" required placeholder="Password saat ini" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+        <div class="grid grid-cols-2 gap-2">
+          <input type="password" id="acc-new-pass" required minlength="4" placeholder="Password baru" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+          <input type="password" id="acc-confirm-pass" required minlength="4" placeholder="Ulangi password baru" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+        </div>
+        <p id="acc-pass-msg" class="hidden"></p>
+        <button type="submit" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg text-xs transition">
+          Simpan Password Baru
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
   <script src="js/period_filter.js"></script>
   <script src="js/analytics.js"></script>
   <script src="js/trades.js"></script>
   <script src="js/risk_calc.js"></script>
+  <script src="js/account_backup.js"></script>
+  <script src="js/pair_presets.js"></script>
+  <script>
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const btn = document.getElementById('pwa-install-btn');
+      if (btn) btn.classList.remove('hidden');
+    });
+    async function triggerPwaInstall() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      const btn = document.getElementById('pwa-install-btn');
+      if (btn) btn.classList.add('hidden');
+    }
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
   <script src="js/auth.js"></script>
 </body>
 </html>
