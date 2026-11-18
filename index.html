@@ -382,8 +382,6 @@
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
       <script>
     const STORE_KEY = 'sheet_trading_data_v2';
     const BALANCE_KEY = 'sheet_trading_init_bal';
@@ -438,7 +436,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      if (!res.ok) throw new Error("Gagal menyimpan ke Firebase");
+      if (!res.ok) {
+        const errDetail = await res.text();
+        throw new Error(`Status ${res.status}: ${errDetail}`);
+      }
       return await res.json();
     }
 
