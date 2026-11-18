@@ -1,7 +1,7 @@
 // ============================================================
 // 1. AI CHART & MT5 MULTI-TRADE SCREENSHOT SCANNER
 // ============================================================
-function compressImageToBase64(file, maxWidth = 960, quality = 0.8) {
+function compressImageToBase64(file, maxWidth = 760, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -99,7 +99,7 @@ async function handleScreenshotScan(event) {
 
   if (scanLabel) scanLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   if (statusEl) {
-    statusEl.innerHTML = '<span class="text-cyan-300"><i class="fas fa-eye fa-beat mr-1"></i>Memindai transaksi dari screenshot MT4/MT5 Anda (maks 12 dtk)...</span>';
+    statusEl.innerHTML = '<span class="text-cyan-300"><i class="fas fa-eye fa-beat mr-1"></i>Memindai transaksi dari screenshot MT4/MT5 Anda (mohon tunggu ~5-15 dtk)...</span>';
     statusEl.classList.remove('hidden');
   }
 
@@ -160,7 +160,7 @@ async function handleScreenshotScan(event) {
   } catch (err) {
     clearTimeout(timeoutId);
     const msg = err.name === 'AbortError'
-      ? 'Koneksi scan melebihi 14 detik. Coba kirim ulang atau potong (crop) bagian daftar transaksi saja.'
+      ? 'Koneksi scan melebihi 35 detik. Coba kirim ulang atau potong (crop) bagian daftar transaksi saja.'
       : err.message;
     if (statusEl) {
       statusEl.innerHTML = `<span class="text-rose-400">Gagal scan gambar: ${msg}</span>`;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jurnaltrade-shell-v10';
+const CACHE_NAME = 'jurnaltrade-shell-v11';
 const SHELL_ASSETS = [
   './',
   './index.html',
