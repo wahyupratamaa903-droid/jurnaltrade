@@ -598,38 +598,6 @@
         </div>
       </div>
 
-      <!-- Brankas API Key Multi-Provider (Tersimpan Lokal & Aman di Perangkat) -->
-      <form onsubmit="saveAiVaultFromUI(event)" class="bg-slate-950/80 border border-purple-500/30 rounded-xl p-3 space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-            <i class="fas fa-key text-purple-400"></i> Brankas API Key AI & Berita
-          </span>
-          <span id="vault-status-badge" class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-            Server Aktif (Auto)
-          </span>
-        </div>
-        <p class="text-[10px] text-slate-400 leading-relaxed">
-          AI & Radar Berita sudah aktif otomatis dari server tanpa perlu mengisi key. Kolom di bawah bersifat opsional jika ingin memakai kunci pribadi.
-        </p>
-
-        <div class="space-y-1.5 font-mono text-[11px]">
-          <input type="password" id="vault-groq" placeholder="Groq API Key (gsk_...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200">
-          <input type="password" id="vault-cerebras" placeholder="Cerebras API Key (csk-...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200">
-          <div class="grid grid-cols-2 gap-1.5">
-            <input type="password" id="vault-or1" placeholder="OpenRouter Utama (sk-or-...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
-            <input type="password" id="vault-or2" placeholder="OpenRouter Cadangan" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
-          </div>
-          <div class="grid grid-cols-2 gap-1.5">
-            <input type="password" id="vault-exa" placeholder="Exa Search Key (Berita)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
-            <input type="password" id="vault-jina" placeholder="Jina AI Key (jina_...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
-          </div>
-        </div>
-
-        <button type="submit" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-xs transition">
-          Simpan API Key ke Perangkat
-        </button>
-      </form>
-
       <!-- Ganti Password -->
       <form id="acc-pass-form" onsubmit="handleChangePassword(event)" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
         <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
