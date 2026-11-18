@@ -17,6 +17,58 @@
 </head>
 <body class="text-slate-200 text-xs min-h-screen p-2 md:p-5 space-y-4">
 
+  <!-- LAYAR LOGIN & REGISTER (PERSIS FOTO REFERENSI) -->
+  <div id="auth-overlay" class="fixed inset-0 z-[9999] flex items-center justify-center p-4" style="background: linear-gradient(135deg, #6ee7b7 0%, #22c55e 50%, #16a34a 100%); font-family: sans-serif;">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-[350px] px-8 py-10 text-center">
+      <div class="inline-block mb-8">
+        <h2 id="auth-title" class="text-2xl tracking-[0.15em] text-neutral-700 font-normal uppercase">LOGIN</h2>
+        <div class="h-[2.5px] bg-emerald-500 w-full mt-1.5 rounded-full"></div>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="text-left space-y-6">
+        <div>
+          <label class="block text-sm text-neutral-600 mb-1">Email</label>
+          <input type="email" id="auth-email" required placeholder="nama@email.com"
+            class="w-full border-b border-emerald-400 focus:border-emerald-600 outline-none py-1.5 text-neutral-800 text-sm bg-transparent transition" />
+        </div>
+
+        <div>
+          <label class="block text-sm text-neutral-600 mb-1">Password</label>
+          <input type="password" id="auth-password" required minlength="4" placeholder="••••••••"
+            class="w-full border-b border-emerald-400 focus:border-emerald-600 outline-none py-1.5 text-neutral-800 text-sm bg-transparent transition" />
+          <div class="text-right mt-1.5">
+            <button type="button" onclick="handleForgotPass()" id="forgot-btn" class="text-[11px] text-emerald-500 hover:underline">Forgot password?</button>
+          </div>
+        </div>
+
+        <p id="auth-msg" class="text-xs text-center font-medium hidden"></p>
+
+        <div class="pt-2 text-center">
+          <button type="submit" id="auth-submit-btn"
+            class="w-40 py-2.5 rounded-full text-white text-sm tracking-wider uppercase font-medium shadow-lg transition transform active:scale-95"
+            style="background: linear-gradient(90deg, #10b981 0%, #86efac 100%); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+            LOGIN
+          </button>
+        </div>
+
+        <div class="text-center pt-1">
+          <button type="button" onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-xs text-emerald-500 hover:underline">
+            Don't have account yet?
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- BAR INFO AKUN & TOMBOL LOGOUT DI POJOK KANAN ATAS -->
+  <div id="user-Session-bar" class="hidden bg-slate-900/90 border-b border-slate-800 px-4 py-1.5 text-[11px] flex justify-between items-center text-slate-300">
+    <span>👤 Akun: <strong id="active-user-email" class="text-emerald-400 font-mono">-</strong></span>
+    <button onclick="logoutUser()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded text-[10px] font-bold transition">
+      Keluar (Logout)
+    </button>
+  </div>
+
+
   <!-- Top Metrics Bar -->
   <header class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
     <div class="flex items-center gap-3">
@@ -332,23 +384,149 @@
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script>
+    <script>
     const STORE_KEY = 'sheet_trading_data_v2';
     const BALANCE_KEY = 'sheet_trading_init_bal';
+    const SESSION_USER_KEY = 'jurnal_logged_in_user';
 
     const firebaseConfig = {
       databaseURL: "https://jurnal-trading-514b2-default-rtdb.asia-southeast1.firebasedatabase.app/"
     };
-    firebase.initializeApp(firebaseConfig);
-    const dbRef = firebase.database().ref("jurnal_trading_v2");
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
 
-    let trades = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
-    let initialBalance = parseFloat(localStorage.getItem(BALANCE_KEY) || '2000000');
+    let currentUserKey = localStorage.getItem(SESSION_USER_KEY) || null;
+    let currentUserEmail = localStorage.getItem(SESSION_USER_KEY + '_email') || null;
+    let isRegisterMode = false;
+    let userDbRef = null;
+
+    let trades = [];
+    let initialBalance = 2000000;
     let equityChartInstance = null;
 
-    document.getElementById('initial-balance').value = initialBalance;
-    document.getElementById("initial-balance").addEventListener("change", () => {
-      initialBalance = parseFloat(document.getElementById("initial-balance").value) || 0;
+    function emailToKey(email) {
+      return email.trim().toLowerCase().replace(/[.#$\[\]\/@]/g, '_');
+    }
+
+    function showAuthMsg(text, isError = true) {
+      const msg = document.getElementById('auth-msg');
+      msg.textContent = text;
+      msg.className = `text-xs text-center font-medium ${isError ? 'text-rose-500' : 'text-emerald-600'}`;
+      msg.classList.remove('hidden');
+    }
+
+    function toggleAuthMode() {
+      isRegisterMode = !isRegisterMode;
+      document.getElementById('auth-title').textContent = isRegisterMode ? 'BUAT AKUN' : 'LOGIN';
+      document.getElementById('auth-submit-btn').textContent = isRegisterMode ? 'DAFTAR' : 'LOGIN';
+      document.getElementById('auth-toggle-btn').textContent = isRegisterMode ? 'Sudah punya akun? Login' : "Don't have account yet?";
+      document.getElementById('forgot-btn').classList.toggle('hidden', isRegisterMode);
+      document.getElementById('auth-msg').classList.add('hidden');
+    }
+
+    function handleForgotPass() {
+      const email = document.getElementById('auth-email').value.trim();
+      if (!email) return showAuthMsg('Masukkan email Anda terlebih dahulu di kolom Email.');
+      const uKey = emailToKey(email);
+      db.ref('users/' + uKey + '/profile').once('value').then(snap => {
+        if (!snap.exists()) return showAuthMsg('Akun dengan email ini belum terdaftar.');
+        const newPass = prompt('Masukkan password baru untuk akun ' + email + ':');
+        if (newPass && newPass.length >= 4) {
+          db.ref('users/' + uKey + '/profile/password').set(btoa(newPass));
+          showAuthMsg('Password berhasil diperbarui! Silakan login.', false);
+        }
+      });
+    }
+
+    function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value.trim().toLowerCase();
+      const password = document.getElementById('auth-password').value;
+      const uKey = emailToKey(email);
+      const encodedPass = btoa(password);
+
+      showAuthMsg('Memproses...', false);
+
+      const profileRef = db.ref('users/' + uKey + '/profile');
+      profileRef.once('value').then(snapshot => {
+        const profile = snapshot.val();
+
+        if (isRegisterMode) {
+          if (profile) {
+            return showAuthMsg('Email sudah terdaftar! Silakan klik Login.');
+          }
+          profileRef.set({
+            email: email,
+            password: encodedPass,
+            createdAt: Date.now()
+          }).then(() => {
+            loginSuccess(uKey, email);
+          });
+        } else {
+          if (!profile) {
+            return showAuthMsg('Akun belum ditemukan. Klik "Don\'t have account yet?" untuk buat akun.');
+          }
+          if (profile.password !== encodedPass) {
+            return showAuthMsg('Password salah! Silakan coba lagi.');
+          }
+          loginSuccess(uKey, email);
+        }
+      }).catch(err => {
+        showAuthMsg('Gagal terhubung ke server: ' + err.message);
+      });
+    }
+
+    function loginSuccess(uKey, email) {
+      currentUserKey = uKey;
+      currentUserEmail = email;
+      localStorage.setItem(SESSION_USER_KEY, uKey);
+      localStorage.setItem(SESSION_USER_KEY + '_email', email);
+
+      document.getElementById('auth-overlay').classList.add('hidden');
+      document.getElementById('user-Session-bar').classList.remove('hidden');
+      document.getElementById('active-user-email').textContent = email;
+
+      connectUserDatabase(uKey);
+    }
+
+    function logoutUser() {
+      if (userDbRef) userDbRef.off();
+      localStorage.removeItem(SESSION_USER_KEY);
+      localStorage.removeItem(SESSION_USER_KEY + '_email');
+      currentUserKey = null;
+      trades = [];
+      initialBalance = 2000000;
+      document.getElementById('initial-balance').value = initialBalance;
+      updateAll();
+
+      document.getElementById('user-Session-bar').classList.add('hidden');
+      document.getElementById('auth-overlay').classList.remove('hidden');
+      document.getElementById('auth-form').reset();
+      document.getElementById('auth-msg').classList.add('hidden');
+    }
+
+    function connectUserDatabase(uKey) {
+      if (userDbRef) userDbRef.off();
+      userDbRef = db.ref('users/' + uKey + '/jurnal_data');
+
+      userDbRef.on('value', (snapshot) => {
+        const cloudData = snapshot.val();
+        if (cloudData) {
+          trades = cloudData.trades || [];
+          initialBalance = typeof cloudData.initialBalance === 'number' ? cloudData.initialBalance : 2000000;
+        } else {
+          trades = [];
+          initialBalance = 2000000;
+        }
+        document.getElementById('initial-balance').value = initialBalance;
+        updateAll();
+      });
+    }
+
+    document.getElementById('initial-balance').addEventListener('change', () => {
+      initialBalance = parseFloat(document.getElementById('initial-balance').value) || 0;
       saveToStorage();
     });
 
@@ -360,24 +538,20 @@
     }
 
     function saveToStorage() {
-      localStorage.setItem(STORE_KEY, JSON.stringify(trades));
-      localStorage.setItem(BALANCE_KEY, initialBalance.toString());
       updateAll();
-      dbRef.set({ initialBalance: initialBalance, trades: trades, updatedAt: Date.now() });
-    }
-    dbRef.on("value", (snapshot) => {
-      const cloudData = snapshot.val();
-      if (cloudData) {
-        trades = cloudData.trades || [];
-        initialBalance = typeof cloudData.initialBalance === "number" ? cloudData.initialBalance : 2000000;
-        document.getElementById("initial-balance").value = initialBalance;
-        localStorage.setItem(STORE_KEY, JSON.stringify(trades));
-        localStorage.setItem(BALANCE_KEY, initialBalance.toString());
-        updateAll();
-      } else if (trades.length > 0) {
-        saveToStorage();
+      if (currentUserKey) {
+        db.ref('users/' + currentUserKey + '/jurnal_data').set({
+          initialBalance: initialBalance,
+          trades: trades,
+          updatedAt: Date.now()
+        });
       }
-    });
+    }
+
+    // Cek otomatis apakah pengguna sudah login sebelumnya di HP ini
+    if (currentUserKey && currentUserEmail) {
+      loginSuccess(currentUserKey, currentUserEmail);
+    }
 
     function openModal(tradeId = null) {
       const form = document.getElementById('trade-form');
