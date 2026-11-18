@@ -334,27 +334,32 @@
           </div>
         </div>
 
-        <!-- Kalkulator Lot Otomatis (3 Profil Risiko) -->
-        <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 space-y-2">
+        <!-- Kalkulator Lot Otomatis (3 Profil Risiko + Custom %) -->
+        <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
               <i class="fas fa-calculator"></i> Kalkulator Lot Otomatis
             </span>
-            <span class="text-[9px] text-slate-500 font-mono">Basis: Equity Saat Ini</span>
+            <span id="rate-status-text" class="text-[9px] text-emerald-400 font-mono">Live: Rp 18.225</span>
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[9px] text-slate-400 block mb-0.5">Jarak SL (Pips)</label>
+              <label class="text-[9px] text-slate-400 block mb-0.5">Jarak SL (Pips) <span class="text-slate-500">• 1 Pip = 10 Poin</span></label>
               <input type="number" step="0.1" id="calc-sl-pips" placeholder="Contoh: 20" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono">
             </div>
             <div>
-              <label class="text-[9px] text-slate-400 block mb-0.5">Kurs (Rp / $1 USD)</label>
-              <input type="number" id="calc-usd-rate" value="16000" onchange="saveUsdRate(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono">
+              <label class="text-[9px] text-slate-400 flex items-center justify-between mb-0.5">
+                <span>Kurs (Rp / $1 USD)</span>
+                <button type="button" onclick="fetchLiveUsdRate(true)" title="Perbarui kurs real-time" class="text-emerald-400 hover:text-emerald-300 text-[9px] underline">
+                  <i class="fas fa-rotate"></i> Live
+                </button>
+              </label>
+              <input type="number" id="calc-usd-rate" value="18225" oninput="saveUsdRate(this.value, true)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono">
             </div>
           </div>
 
-          <div class="grid grid-cols-3 gap-1.5 pt-1">
+          <div class="grid grid-cols-3 gap-1.5 pt-0.5">
             <button type="button" onclick="applyRiskProfile(0.5)" class="py-1.5 px-2 rounded-lg bg-blue-950/70 hover:bg-blue-900/80 border border-blue-700/50 text-blue-300 font-mono text-[10px] font-bold transition">
               Konservatif 0.5%
             </button>
@@ -365,6 +370,18 @@
               Agresif 2%
             </button>
           </div>
+
+          <!-- Opsi Custom Persentase Risiko Manual -->
+          <div class="flex items-center gap-1.5 pt-0.5">
+            <div class="relative flex-1">
+              <input type="number" step="0.1" min="0.1" max="100" id="calc-custom-risk" placeholder="Custom Risk % (misal: 1.5 atau 5)" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-500">
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono">%</span>
+            </div>
+            <button type="button" onclick="applyCustomRisk()" class="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-mono text-[10px] font-bold transition shrink-0">
+              Hitung Custom
+            </button>
+          </div>
+
           <p id="calc-feedback" class="hidden"></p>
         </div>
 
