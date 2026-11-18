@@ -1,7 +1,7 @@
 // ============================================================
-// 1. AI CHART & MT5 SCREENSHOT SCANNER (VISION)
+// 1. AI CHART & MT5 MULTI-TRADE SCREENSHOT SCANNER
 // ============================================================
-function compressImageToBase64(file, maxWidth = 1100, quality = 0.82) {
+function compressImageToBase64(file, maxWidth = 960, quality = 0.8) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -28,18 +28,65 @@ function compressImageToBase64(file, maxWidth = 1100, quality = 0.82) {
   });
 }
 
-async function extractTextViaBrowserOcr(imageDataUrl) {
-  if (!window.Tesseract) {
-    await new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('Gagal memuat mesin OCR.'));
-      document.head.appendChild(s);
+async function importMultipleScannedTrades(tradeItems, todayFormatted, defaultSess, providerName) {
+  if (!Array.isArray(trades)) return 0;
+
+  let addedCount = 0;
+  const baseTs = Date.now();
+
+  tradeItems.forEach((item, idx) => {
+    const pair = String(item.pair || '').toUpperCase().trim();
+    if (!pair) return;
+
+    const side = String(item.side || 'BUY').toUpperCase() === 'SELL' ? 'SELL' : 'BUY';
+    const lotNum = parseFloat(item.lot);
+    const lotStr = !isNaN(lotNum) && lotNum > 0 ? lotNum.toFixed(2) : '0.01';
+
+    let status = String(item.status || 'TP').toUpperCase();
+    if (!['TP', 'SL', 'SL+', 'BE'].includes(status)) status = 'TP';
+
+    const rawNominal = Math.abs(Math.round(Number(item.nominal) || 0));
+    if (rawNominal === 0 && item.status !== 'BE') {
+      status = 'BE';
+    }
+
+    let profit = 0;
+    let loss = 0;
+    if (status === 'TP' || status === 'SL+') {
+      profit = rawNominal;
+    } else if (status === 'SL') {
+      loss = rawNominal;
+    }
+
+    const session = ['Asia', 'London', 'New York'].includes(item.session) ? item.session : defaultSess;
+
+    trades.push({
+      id: baseTs + idx,
+      date: item.date || todayFormatted,
+      session: session,
+      pair: pair,
+      side: side,
+      lot: lotStr,
+      rr: item.rr || '',
+      risk: Math.round(Number(item.risk) || 0),
+      status: status,
+      profit: profit,
+      loss: loss,
+      pips: item.pips !== undefined && item.pips !== null ? String(item.pips) : '',
+      reason: item.reason || `Scan Screenshot (${providerName})`,
+      info: item.info || 'Auto-import MT4/MT5',
+      doc: ''
     });
+    addedCount++;
+  });
+
+  if (addedCount > 0) {
+    if (typeof saveAll === 'function') await saveAll();
+    if (typeof updateDashboard === 'function') updateDashboard();
+    if (typeof renderSheet === 'function') renderSheet();
   }
-  const result = await window.Tesseract.recognize(imageDataUrl, 'eng');
-  return (result?.data?.text || '').replace(/\s+/g, ' ').trim();
+
+  return addedCount;
 }
 
 async function handleScreenshotScan(event) {
@@ -48,13 +95,16 @@ async function handleScreenshotScan(event) {
 
   const statusEl = document.getElementById('ai-autofill-status');
   const scanLabel = document.getElementById('ai-scan-btn-label');
-  const origLabel = scanLabel ? scanLabel.innerHTML : '';
+  const origLabel = scanLabel ? scanLabel.innerHTML : '<i class="fas fa-camera"></i>';
 
   if (scanLabel) scanLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   if (statusEl) {
-    statusEl.innerHTML = '<span class="text-cyan-300"><i class="fas fa-eye fa-beat mr-1"></i>AI sedang memindai screenshot MT4/MT5 / Chart Anda...</span>';
+    statusEl.innerHTML = '<span class="text-cyan-300"><i class="fas fa-eye fa-beat mr-1"></i>Memindai transaksi dari screenshot MT4/MT5 Anda (maks 12 dtk)...</span>';
     statusEl.classList.remove('hidden');
   }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 14000);
 
   try {
     const base64Img = await compressImageToBase64(file);
@@ -64,6 +114,7 @@ async function handleScreenshotScan(event) {
 
     const res = await fetch('/api/vision', {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         imageBase64: base64Img,
@@ -71,43 +122,48 @@ async function handleScreenshotScan(event) {
         defaultSession: defaultSess
       })
     });
+    clearTimeout(timeoutId);
 
     const data = await res.json();
-    if (res.ok && data.content) {
-      const cleaned = data.content.replace(/```json|```/gi, '').trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+    if (!res.ok || !data.content) {
+      throw new Error(data.error || `Server Vision sibuk (${res.status})`);
+    }
 
-      if (typeof applyParsedDataToForm === 'function') {
-        applyParsedDataToForm(parsed);
-      }
+    const cleaned = data.content.replace(/```json|```/gi, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
 
+    const list = Array.isArray(parsed.trades) ? parsed.trades : [parsed];
+
+    if (list.length > 1) {
+      const count = await importMultipleScannedTrades(list, todayFormatted, defaultSess, data.provider);
       if (statusEl) {
-        statusEl.innerHTML = `<span class="text-emerald-400"><i class="fas fa-circle-check mr-1"></i>Screenshot berhasil dipindai oleh <strong>${data.provider}</strong>! Periksa kolom lalu klik Simpan.</span>`;
+        statusEl.innerHTML = `<span class="text-emerald-400"><i class="fas fa-circle-check mr-1"></i>Berhasil mengimpor <strong>${count} transaksi</strong> sekaligus ke jurnal!</span>`;
+      }
+      if (typeof showToast === 'function') {
+        showToast(`${count} transaksi MT4/MT5 berhasil ditambahkan ke jurnal!`);
+      }
+      setTimeout(() => {
+        if (typeof closeModal === 'function') closeModal();
+      }, 1100);
+    } else if (list.length === 1) {
+      if (typeof applyParsedDataToForm === 'function') {
+        applyParsedDataToForm(list[0]);
+      }
+      if (statusEl) {
+        statusEl.innerHTML = `<span class="text-emerald-400"><i class="fas fa-circle-check mr-1"></i>1 transaksi terdeteksi (${data.provider}). Periksa kolom lalu klik Simpan.</span>`;
       }
       if (typeof showToast === 'function') showToast('Data screenshot berhasil diekstrak!');
-      return;
-    }
-
-    // Fallback Otomatis: Baca teks gambar via Browser OCR -> proses dengan AI Auto-Fill
-    if (statusEl) {
-      statusEl.innerHTML = '<span class="text-amber-300"><i class="fas fa-spinner fa-spin mr-1"></i>Membaca angka & teks screenshot via OCR lokal...</span>';
-    }
-    const ocrText = await extractTextViaBrowserOcr(base64Img);
-    if (!ocrText || ocrText.length < 4) {
-      throw new Error('Teks pada gambar tidak terbaca jelas.');
-    }
-
-    const inputEl = document.getElementById('ai-autofill-input');
-    if (inputEl) {
-      inputEl.value = `[Hasil Scan Screenshot]: ${ocrText.slice(0, 380)}`;
-    }
-    if (typeof runAiAutoFill === 'function') {
-      await runAiAutoFill();
+    } else {
+      throw new Error('Tidak ada baris transaksi yang terdeteksi pada gambar.');
     }
   } catch (err) {
+    clearTimeout(timeoutId);
+    const msg = err.name === 'AbortError'
+      ? 'Koneksi scan melebihi 14 detik. Coba kirim ulang atau potong (crop) bagian daftar transaksi saja.'
+      : err.message;
     if (statusEl) {
-      statusEl.innerHTML = `<span class="text-rose-400">Gagal scan gambar: ${err.message}</span>`;
+      statusEl.innerHTML = `<span class="text-rose-400">Gagal scan gambar: ${msg}</span>`;
     }
   } finally {
     if (scanLabel) scanLabel.innerHTML = origLabel;

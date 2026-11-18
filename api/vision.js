@@ -2,9 +2,19 @@ function cleanEnv(val) {
   return (val || '').replace(/[\r\n\s]+/g, '').trim();
 }
 
-async function getLiveFreeVisionModels() {
+async function fetchWithTimeout(url, options, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/models');
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function getFastFreeVisionModels() {
+  try {
+    const res = await fetchWithTimeout('https://openrouter.ai/api/v1/models', {}, 4000);
     if (res.ok) {
       const json = await res.json();
       const models = Array.isArray(json.data) ? json.data : [];
@@ -16,11 +26,11 @@ async function getLiveFreeVisionModels() {
         })
         .map(m => m.id);
       if (freeVision.length > 0) {
-        return freeVision.slice(0, 4);
+        return freeVision.slice(0, 2);
       }
     }
   } catch (_) {}
-  return ['openrouter/free'];
+  return [];
 }
 
 module.exports = async function handler(req, res) {
@@ -37,20 +47,31 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'File gambar tidak valid.' });
   }
 
-  const promptText = `Analisa gambar screenshot transaksi trading (MT4/MT5/Broker) atau chart TradingView ini.
-Ekstrak informasi trading dan kembalikan HANYA objek JSON murni tanpa teks lain:
-- "date": format "DD/MM/YYYY" (ambil dari tanggal di gambar jika terlihat, jika tidak gunakan "${todayFormatted}").
-- "session": pilih persis salah satu dari ["Asia", "London", "New York"] (gunakan "${defaultSess}" jika tidak terlihat).
-- "pair": simbol instrumen huruf kapital (contoh: "XAUUSD", "EURUSD", "BTCUSD", "US30").
-- "side": pilih persis "BUY" atau "SELL".
-- "lot": string 2 desimal (contoh: "0.01", "0.05", "0.10"). Default "0.01" jika tidak terlihat.
-- "rr": format rasio seperti "1 : 2" jika terlihat atau bisa dihitung dari SL/TP, jika tidak "".
-- "risk": angka integer Rupiah (0 jika tidak terlihat).
-- "status": pilih persis salah satu dari ["TP", "SL", "SL+", "BE"] berdasarkan hasil profit/loss di gambar.
-- "nominal": angka integer absolut Rupiah (jika angka di gambar memakai USD seperti $25.50, kalikan 16000 menjadi 408000; jika sudah Rupiah tulis langsung).
-- "pips": angka selisih pips jika terlihat, atau "".
-- "reason": rangkuman teknikal / harga entry-exit / pola struktur chart yang terlihat pada gambar dalam bahasa Indonesia.
-- "info": catatan kondisi eksekusi atau "-" jika tidak ada.`;
+  const promptText = `Analisa screenshot aplikasi trading MT4/MT5/Broker atau chart TradingView ini.
+Jika di gambar terdapat BANYAK baris transaksi/posisi (misalnya 2 sampai 20 baris posisi), ekstrak SEMUA baris transaksi tersebut!
+Perhatikan mata uang akun di bagian atas (misal IDR atau USD). Jika sudah IDR, gunakan angkanya langsung (bulatkan ke integer). Jika USD, kalikan 16000 untuk konversi ke Rupiah.
+
+Kembalikan HANYA objek JSON valid dengan format persis seperti ini:
+{
+  "currency": "IDR atau USD",
+  "trades": [
+    {
+      "date": "DD/MM/YYYY (gunakan ${todayFormatted} jika tidak tertulis di baris)",
+      "session": "${defaultSess}",
+      "pair": "SYMBOL HURUF KAPITAL (contoh: BTCUSD, XAUUSD, EURUSD)",
+      "side": "BUY atau SELL",
+      "lot": "0.01",
+      "rr": "1 : 2 atau kosongkan",
+      "risk": 0,
+      "status": "TP jika profit > 0, SL jika rugi < 0, BE jika 0.00",
+      "nominal": 1600,
+      "pips": "selisih harga/pips jika bisa dihitung, atau kosong",
+      "reason": "Entry -> Exit (contoh: 64168.50 -> 64178.21) hasil scan MT5",
+      "info": "Auto-import Screenshot MT5"
+    }
+  ]
+}
+Keluarkan HANYA JSON murni tanpa markdown atau penjelasan tambahan.`;
 
   const orKey1 = cleanEnv(process.env.OPENROUTER_KEY_1);
   const orKey2 = cleanEnv(process.env.OPENROUTER_KEY_2);
@@ -59,55 +80,52 @@ Ekstrak informasi trading dan kembalikan HANYA objek JSON murni tanpa teks lain:
     return res.status(503).json({ error: 'OPENROUTER_KEY belum diatur di Vercel.' });
   }
 
-  const liveModels = await getLiveFreeVisionModels();
-  if (!liveModels.includes('openrouter/free')) {
-    liveModels.push('openrouter/free');
-  }
-
+  const detected = await getFastFreeVisionModels();
+  const candidates = [...new Set([...detected, 'openrouter/free'])].slice(0, 3);
   const keys = [orKey1, orKey2].filter(Boolean);
   const errors = [];
 
-  for (const modelId of liveModels) {
-    for (let i = 0; i < keys.length; i++) {
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${keys[i]}`,
-            'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app',
-            'X-Title': 'Jurnal Trading Analytics'
-          },
-          body: JSON.stringify({
-            model: modelId,
-            temperature: 0.1,
-            max_tokens: 900,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: promptText },
-                  { type: 'image_url', image_url: { url: imageBase64 } }
-                ]
-              }
-            ]
-          })
-        });
+  for (let i = 0; i < candidates.length; i++) {
+    const modelId = candidates[i];
+    const key = keys[i % keys.length];
+    try {
+      const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`,
+          'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app',
+          'X-Title': 'Jurnal Trading Analytics'
+        },
+        body: JSON.stringify({
+          model: modelId,
+          temperature: 0.1,
+          max_tokens: 1800,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: promptText },
+                { type: 'image_url', image_url: { url: imageBase64 } }
+              ]
+            }
+          ]
+        })
+      }, 9500);
 
-        if (!response.ok) {
-          const errTxt = await response.text();
-          errors.push(`${modelId} (${response.status}): ${errTxt.slice(0, 70)}`);
-          continue;
-        }
-
-        const data = await response.json();
-        const content = data?.choices?.[0]?.message?.content;
-        if (content) {
-          return res.status(200).json({ content, provider: `OpenRouter (${modelId})` });
-        }
-      } catch (err) {
-        errors.push(`${modelId}: ${err.message}`);
+      if (!response.ok) {
+        const errTxt = await response.text();
+        errors.push(`${modelId} (${response.status}): ${errTxt.slice(0, 60)}`);
+        continue;
       }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (content) {
+        return res.status(200).json({ content, provider: `OpenRouter (${modelId})` });
+      }
+    } catch (err) {
+      errors.push(`${modelId}: ${err.name === 'AbortError' ? 'Timeout' : err.message}`);
     }
   }
 
