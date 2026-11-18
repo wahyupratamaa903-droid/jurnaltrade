@@ -9,6 +9,10 @@ const TRUSTED_DOMAINS = [
   'dailyfx.com'
 ];
 
+function cleanEnv(val) {
+  return (val || '').replace(/[\r\n\s]+/g, '').trim();
+}
+
 function extractDomain(urlStr) {
   try {
     return new URL(urlStr).hostname.replace(/^www\./, '');
@@ -26,14 +30,16 @@ module.exports = async function handler(req, res) {
   const cleanPair = (body.pair || 'XAUUSD').trim().toUpperCase();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. Prioritas Utama: Exa Search API
-  if (process.env.EXA_API_KEY) {
+  const exaKey = cleanEnv(process.env.EXA_API_KEY);
+  const jinaKey = cleanEnv(process.env.JINA_API_KEY);
+
+  if (exaKey) {
     try {
       const response = await fetch('https://api.exa.ai/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.EXA_API_KEY
+          'x-api-key': exaKey
         },
         body: JSON.stringify({
           query: `${cleanPair} latest market news analysis forecast forex gold`,
@@ -61,15 +67,14 @@ module.exports = async function handler(req, res) {
     } catch (_) {}
   }
 
-  // 2. Cadangan: Jina AI Search
-  if (process.env.JINA_API_KEY) {
+  if (jinaKey) {
     try {
       const q = encodeURIComponent(`${cleanPair} market news analysis`);
       const response = await fetch(`https://s.jina.ai/${q}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.JINA_API_KEY}`,
+          'Authorization': `Bearer ${jinaKey}`,
           'X-Site': TRUSTED_DOMAINS.join(',')
         }
       });
@@ -92,7 +97,7 @@ module.exports = async function handler(req, res) {
     } catch (_) {}
   }
 
-  if (!process.env.EXA_API_KEY && !process.env.JINA_API_KEY) {
+  if (!exaKey && !jinaKey) {
     return res.status(503).json({ error: 'EXA_API_KEY / JINA_API_KEY belum diatur di Vercel.' });
   }
 

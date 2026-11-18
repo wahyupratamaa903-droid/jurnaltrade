@@ -1,3 +1,7 @@
+function cleanEnv(val) {
+  return (val || '').replace(/[\r\n\s]+/g, '').trim();
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -11,67 +15,96 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Pesan tidak boleh kosong' });
   }
 
-  // Daftar provider AI otomatis dari Environment Variables Vercel (Failover berurutan)
+  const groqKey = cleanEnv(process.env.GROQ_API_KEY);
+  const cerebrasKey = cleanEnv(process.env.CEREBRAS_API_KEY);
+  const orKey1 = cleanEnv(process.env.OPENROUTER_KEY_1);
+  const orKey2 = cleanEnv(process.env.OPENROUTER_KEY_2);
+  const sambaKey = cleanEnv(process.env.SAMBANOVA_API_KEY);
+  const nvidiaKey = cleanEnv(process.env.NVIDIA_API_KEY);
+  const deepinfraKey = cleanEnv(process.env.DEEPINFRA_API_KEY);
+
   const providers = [];
 
-  if (process.env.GROQ_API_KEY) {
+  if (groqKey) {
     providers.push({
-      name: 'Groq (Llama 3.3 70B)',
+      name: 'Groq',
       url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile'
+      key: groqKey,
+      model: 'llama-3.3-70b-versatile',
+      supportsJsonFormat: true
     });
   }
-  if (process.env.CEREBRAS_API_KEY) {
+  if (cerebrasKey) {
     providers.push({
-      name: 'Cerebras (Llama 3.3 70B)',
+      name: 'Cerebras',
       url: 'https://api.cerebras.ai/v1/chat/completions',
-      key: process.env.CEREBRAS_API_KEY,
-      model: 'llama-3.3-70b'
+      key: cerebrasKey,
+      model: 'llama3.3-70b',
+      supportsJsonFormat: true
     });
   }
-  if (process.env.SAMBANOVA_API_KEY) {
+  if (orKey1) {
     providers.push({
-      name: 'SambaNova (Llama 3.3 70B)',
+      name: 'OpenRouter-1',
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      key: orKey1,
+      model: 'openrouter/free',
+      supportsJsonFormat: false,
+      extraHeaders: {
+        'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app',
+        'X-Title': 'Jurnal Trading Analytics'
+      }
+    });
+  }
+  if (orKey2) {
+    providers.push({
+      name: 'OpenRouter-2',
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      key: orKey2,
+      model: 'openrouter/free',
+      supportsJsonFormat: false,
+      extraHeaders: {
+        'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app',
+        'X-Title': 'Jurnal Trading Analytics'
+      }
+    });
+  }
+  if (sambaKey) {
+    providers.push({
+      name: 'SambaNova',
       url: 'https://api.sambanova.ai/v1/chat/completions',
-      key: process.env.SAMBANOVA_API_KEY,
-      model: 'Meta-Llama-3.3-70B-Instruct'
+      key: sambaKey,
+      model: 'Meta-Llama-3.3-70B-Instruct',
+      supportsJsonFormat: false
     });
   }
-  if (process.env.OPENROUTER_KEY_1) {
+  if (nvidiaKey) {
     providers.push({
-      name: 'OpenRouter Utama',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_KEY_1,
-      model: 'google/gemini-2.0-flash-001',
-      extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
+      name: 'NVIDIA',
+      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+      key: nvidiaKey,
+      model: 'meta/llama-3.3-70b-instruct',
+      supportsJsonFormat: false
     });
   }
-  if (process.env.OPENROUTER_KEY_2) {
+  if (deepinfraKey) {
     providers.push({
-      name: 'OpenRouter Cadangan',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: process.env.OPENROUTER_KEY_2,
-      model: 'meta-llama/llama-3.3-70b-instruct:free',
-      extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
-    });
-  }
-  if (process.env.SILICONFLOW_API_KEY) {
-    providers.push({
-      name: 'SiliconFlow (Qwen 2.5 72B)',
-      url: 'https://api.siliconflow.cn/v1/chat/completions',
-      key: process.env.SILICONFLOW_API_KEY,
-      model: 'Qwen/Qwen2.5-72B-Instruct'
+      name: 'DeepInfra',
+      url: 'https://api.deepinfra.com/v1/openai/chat/completions',
+      key: deepinfraKey,
+      model: 'meta-llama/Llama-3.3-70B-Instruct',
+      supportsJsonFormat: false
     });
   }
 
   if (providers.length === 0) {
     return res.status(503).json({
-      error: 'API Key belum diatur di Environment Variables Vercel.'
+      error: 'Belum ada API Key AI yang terdeteksi di Environment Variables Vercel.'
     });
   }
 
-  let lastError = 'Semua provider AI gagal merespons.';
+  const errorLogs = [];
+
   for (const p of providers) {
     try {
       const payload = {
@@ -79,7 +112,7 @@ module.exports = async function handler(req, res) {
         messages: messages,
         temperature: jsonMode ? 0.1 : 0.35
       };
-      if (jsonMode) {
+      if (jsonMode && p.supportsJsonFormat) {
         payload.response_format = { type: 'json_object' };
       }
 
@@ -88,6 +121,7 @@ module.exports = async function handler(req, res) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${p.key}`,
+          'User-Agent': 'JurnalTrade-Server/1.0',
           ...(p.extraHeaders || {})
         },
         body: JSON.stringify(payload)
@@ -95,7 +129,7 @@ module.exports = async function handler(req, res) {
 
       if (!response.ok) {
         const errTxt = await response.text();
-        lastError = `${p.name} (${response.status}): ${errTxt.slice(0, 120)}`;
+        errorLogs.push(`${p.name} (${response.status}): ${errTxt.slice(0, 90)}`);
         continue;
       }
 
@@ -105,9 +139,11 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ content, provider: p.name });
       }
     } catch (err) {
-      lastError = `${p.name}: ${err.message}`;
+      errorLogs.push(`${p.name}: ${err.message}`);
     }
   }
 
-  return res.status(502).json({ error: lastError });
+  return res.status(502).json({
+    error: errorLogs.join(' | ')
+  });
 };

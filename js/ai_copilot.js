@@ -76,7 +76,8 @@ Keluarkan HANYA JSON valid tanpa markdown atau teks tambahan.`;
     ], true);
 
     const cleanedJson = res.content.replace(/```json|```/gi, '').trim();
-    const parsed = JSON.parse(cleanedJson);
+    const jsonMatch = cleanedJson.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleanedJson);
 
     applyParsedDataToForm(parsed);
 
