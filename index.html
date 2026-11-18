@@ -384,30 +384,22 @@
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script>
+      <script>
     const STORE_KEY = 'sheet_trading_data_v2';
     const BALANCE_KEY = 'sheet_trading_init_bal';
     const SESSION_USER_KEY = 'jurnal_logged_in_user';
-
-    const firebaseConfig = {
-      databaseURL: "https://jurnal-trading-514b2-default-rtdb.asia-southeast1.firebasedatabase.app/"
-    };
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.database();
+    const DB_URL = "https://jurnal-trading-514b2-default-rtdb.asia-southeast1.firebasedatabase.app";
 
     let currentUserKey = localStorage.getItem(SESSION_USER_KEY) || null;
     let currentUserEmail = localStorage.getItem(SESSION_USER_KEY + '_email') || null;
     let isRegisterMode = false;
-    let userDbRef = null;
 
     let trades = [];
     let initialBalance = 2000000;
     let equityChartInstance = null;
 
     function emailToKey(email) {
-      return email.trim().toLowerCase().replace(/[.#$\[\]\/@]/g, '_');
+      return email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
     }
 
     function showAuthMsg(text, isError = true) {
@@ -426,21 +418,49 @@
       document.getElementById('auth-msg').classList.add('hidden');
     }
 
-    function handleForgotPass() {
-      const email = document.getElementById('auth-email').value.trim();
-      if (!email) return showAuthMsg('Masukkan email Anda terlebih dahulu di kolom Email.');
-      const uKey = emailToKey(email);
-      db.ref('users/' + uKey + '/profile').once('value').then(snap => {
-        if (!snap.exists()) return showAuthMsg('Akun dengan email ini belum terdaftar.');
-        const newPass = prompt('Masukkan password baru untuk akun ' + email + ':');
-        if (newPass && newPass.length >= 4) {
-          db.ref('users/' + uKey + '/profile/password').set(btoa(newPass));
-          showAuthMsg('Password berhasil diperbarui! Silakan login.', false);
-        }
-      });
+    async function fbGet(path) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const res = await fetch(`${DB_URL}/${path}.json`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error("Akses ditolak (Pastikan tombol Publish di tab Aturan Firebase sudah diklik)");
+        return await res.json();
+      } catch (err) {
+        clearTimeout(timeout);
+        throw err;
+      }
     }
 
-    function handleAuthSubmit(e) {
+    async function fbPut(path, data) {
+      const res = await fetch(`${DB_URL}/${path}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan ke Firebase");
+      return await res.json();
+    }
+
+    async function handleForgotPass() {
+      const email = document.getElementById('auth-email').value.trim().toLowerCase();
+      if (!email) return showAuthMsg('Masukkan email Anda terlebih dahulu di kolom Email.');
+      const uKey = emailToKey(email);
+      try {
+        const profile = await fbGet(`users/${uKey}/profile`);
+        if (!profile) return showAuthMsg('Akun dengan email ini belum terdaftar.');
+        const newPass = prompt('Masukkan password baru untuk akun ' + email + ' (min. 4 karakter):');
+        if (newPass && newPass.length >= 4) {
+          profile.password = btoa(newPass);
+          await fbPut(`users/${uKey}/profile`, profile);
+          showAuthMsg('Password berhasil diperbarui! Silakan login.', false);
+        }
+      } catch (e) {
+        showAuthMsg('Gagal mereset password: ' + e.message);
+      }
+    }
+
+    async function handleAuthSubmit(e) {
       e.preventDefault();
       const email = document.getElementById('auth-email').value.trim().toLowerCase();
       const password = document.getElementById('auth-password').value;
@@ -449,80 +469,91 @@
 
       showAuthMsg('Memproses...', false);
 
-      const profileRef = db.ref('users/' + uKey + '/profile');
-      profileRef.once('value').then(snapshot => {
-        const profile = snapshot.val();
+      try {
+        const profile = await fbGet(`users/${uKey}/profile`);
 
         if (isRegisterMode) {
-          if (profile) {
-            return showAuthMsg('Email sudah terdaftar! Silakan klik Login.');
+          if (profile && profile.email) {
+            return showAuthMsg('Email sudah terdaftar! Klik "Sudah punya akun? Login".');
           }
-          profileRef.set({
+          await fbPut(`users/${uKey}/profile`, {
             email: email,
             password: encodedPass,
             createdAt: Date.now()
-          }).then(() => {
-            loginSuccess(uKey, email);
           });
+          await loginSuccess(uKey, email);
         } else {
-          if (!profile) {
-            return showAuthMsg('Akun belum ditemukan. Klik "Don\'t have account yet?" untuk buat akun.');
+          if (!profile || !profile.email) {
+            return showAuthMsg('Akun belum terdaftar. Klik "Don\'t have account yet?" untuk daftar.');
           }
           if (profile.password !== encodedPass) {
             return showAuthMsg('Password salah! Silakan coba lagi.');
           }
-          loginSuccess(uKey, email);
+          await loginSuccess(uKey, email);
         }
-      }).catch(err => {
-        showAuthMsg('Gagal terhubung ke server: ' + err.message);
-      });
+      } catch (err) {
+        showAuthMsg('Kendala koneksi ke Firebase: ' + err.message);
+      }
     }
 
-    function loginSuccess(uKey, email) {
+    async function loginSuccess(uKey, email) {
       currentUserKey = uKey;
       currentUserEmail = email;
       localStorage.setItem(SESSION_USER_KEY, uKey);
       localStorage.setItem(SESSION_USER_KEY + '_email', email);
 
       document.getElementById('auth-overlay').classList.add('hidden');
-      document.getElementById('user-Session-bar').classList.remove('hidden');
-      document.getElementById('active-user-email').textContent = email;
+      const bar = document.getElementById('user-Session-bar');
+      if (bar) bar.classList.remove('hidden');
+      const emailEl = document.getElementById('active-user-email');
+      if (emailEl) emailEl.textContent = email;
 
-      connectUserDatabase(uKey);
+      await loadUserData(uKey);
     }
 
     function logoutUser() {
-      if (userDbRef) userDbRef.off();
       localStorage.removeItem(SESSION_USER_KEY);
       localStorage.removeItem(SESSION_USER_KEY + '_email');
       currentUserKey = null;
+      currentUserEmail = null;
       trades = [];
       initialBalance = 2000000;
       document.getElementById('initial-balance').value = initialBalance;
       updateAll();
 
-      document.getElementById('user-Session-bar').classList.add('hidden');
+      const bar = document.getElementById('user-Session-bar');
+      if (bar) bar.classList.add('hidden');
       document.getElementById('auth-overlay').classList.remove('hidden');
       document.getElementById('auth-form').reset();
       document.getElementById('auth-msg').classList.add('hidden');
     }
 
-    function connectUserDatabase(uKey) {
-      if (userDbRef) userDbRef.off();
-      userDbRef = db.ref('users/' + uKey + '/jurnal_data');
+    async function loadUserData(uKey) {
+      const localBackup = localStorage.getItem(STORE_KEY + '_' + uKey);
+      const localBal = localStorage.getItem(BALANCE_KEY + '_' + uKey);
+      if (localBackup) {
+        trades = JSON.parse(localBackup);
+        initialBalance = parseFloat(localBal || '2000000');
+        document.getElementById('initial-balance').value = initialBalance;
+        updateAll();
+      }
 
-      userDbRef.on('value', (snapshot) => {
-        const cloudData = snapshot.val();
+      try {
+        const cloudData = await fbGet(`users/${uKey}/jurnal_data`);
         if (cloudData) {
           trades = cloudData.trades || [];
           initialBalance = typeof cloudData.initialBalance === 'number' ? cloudData.initialBalance : 2000000;
-        } else {
+        } else if (!localBackup) {
           trades = [];
           initialBalance = 2000000;
         }
         document.getElementById('initial-balance').value = initialBalance;
+        localStorage.setItem(STORE_KEY + '_' + uKey, JSON.stringify(trades));
+        localStorage.setItem(BALANCE_KEY + '_' + uKey, initialBalance.toString());
         updateAll();
-      });
+      } catch (err) {
+        console.warn('Menggunakan cadangan lokal:', err);
+      }
     }
 
     document.getElementById('initial-balance').addEventListener('change', () => {
@@ -540,15 +571,16 @@
     function saveToStorage() {
       updateAll();
       if (currentUserKey) {
-        db.ref('users/' + currentUserKey + '/jurnal_data').set({
+        localStorage.setItem(STORE_KEY + '_' + currentUserKey, JSON.stringify(trades));
+        localStorage.setItem(BALANCE_KEY + '_' + currentUserKey, initialBalance.toString());
+        fbPut(`users/${currentUserKey}/jurnal_data`, {
           initialBalance: initialBalance,
           trades: trades,
           updatedAt: Date.now()
-        });
+        }).catch(err => console.error('Gagal simpan ke cloud:', err));
       }
     }
 
-    // Cek otomatis apakah pengguna sudah login sebelumnya di HP ini
     if (currentUserKey && currentUserEmail) {
       loginSuccess(currentUserKey, currentUserEmail);
     }
