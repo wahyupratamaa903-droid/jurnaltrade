@@ -201,14 +201,39 @@ function renderSessionList(sessionStats) {
   }).join('');
 }
 
+function buildEquityGradient(ctx, isPositive) {
+  const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+  if (isPositive) {
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.26)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+  } else {
+    gradient.addColorStop(0, 'rgba(244, 63, 94, 0.26)');
+    gradient.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
+  }
+  return gradient;
+}
+
 function renderChart(labels, dataPoints) {
   const ctx = document.getElementById('equityChart').getContext('2d');
-  const ptRadius = dataPoints.length > 20 ? 1 : 3;
+  const ptRadius = dataPoints.length > 20 ? 1.5 : 3.5;
+  const startVal = dataPoints[0] || 0;
+  const lastVal = dataPoints[dataPoints.length - 1] || 0;
+  const isPositive = lastVal >= startVal;
+
+  const lineColor = isPositive ? '#10b981' : '#f43f5e';
+  const fillGradient = buildEquityGradient(ctx, isPositive);
+  const baselinePoints = labels.map(() => startVal);
 
   if (equityChartInstance) {
     equityChartInstance.data.labels = labels;
     equityChartInstance.data.datasets[0].data = dataPoints;
+    equityChartInstance.data.datasets[0].borderColor = lineColor;
+    equityChartInstance.data.datasets[0].pointBackgroundColor = lineColor;
+    equityChartInstance.data.datasets[0].backgroundColor = fillGradient;
     equityChartInstance.data.datasets[0].pointRadius = ptRadius;
+    if (equityChartInstance.data.datasets[1]) {
+      equityChartInstance.data.datasets[1].data = baselinePoints;
+    }
     equityChartInstance.update();
     return;
   }
@@ -217,27 +242,57 @@ function renderChart(labels, dataPoints) {
     type: 'line',
     data: {
       labels: labels,
-      datasets: [{
-        label: 'Ekuitas (Rp)',
-        data: dataPoints,
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.08)',
-        borderWidth: 2,
-        pointBackgroundColor: '#10b981',
-        pointRadius: ptRadius,
-        fill: true,
-        tension: 0.25
-      }]
+      datasets: [
+        {
+          label: 'Ekuitas (Rp)',
+          data: dataPoints,
+          borderColor: lineColor,
+          backgroundColor: fillGradient,
+          borderWidth: 2.25,
+          pointBackgroundColor: lineColor,
+          pointBorderColor: '#060911',
+          pointBorderWidth: 1.5,
+          pointRadius: ptRadius,
+          pointHoverRadius: 5,
+          fill: true,
+          tension: 0.28
+        },
+        {
+          label: 'Garis Modal Awal',
+          data: baselinePoints,
+          borderColor: 'rgba(148, 163, 184, 0.32)',
+          borderWidth: 1.2,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+          tension: 0
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
+          backgroundColor: 'rgba(11, 17, 32, 0.95)',
+          titleColor: '#94a3b8',
+          bodyColor: '#f8fafc',
+          borderColor: 'rgba(148, 163, 184, 0.25)',
+          borderWidth: 1,
+          padding: 10,
+          filter: (item) => item.datasetIndex === 0,
           callbacks: {
             label: function(context) {
-              return `Equity: Rp ${context.parsed.y.toLocaleString('id-ID')}`;
+              const val = context.parsed.y;
+              const diff = val - startVal;
+              const diffStr = diff >= 0 ? `+Rp ${diff.toLocaleString('id-ID')}` : `-Rp ${Math.abs(diff).toLocaleString('id-ID')}`;
+              return `Equity: Rp ${val.toLocaleString('id-ID')} (${diffStr})`;
             }
           }
         }
@@ -245,13 +300,13 @@ function renderChart(labels, dataPoints) {
       scales: {
         x: {
           grid: { color: 'rgba(255, 255, 255, 0.04)' },
-          ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 6 }
+          ticks: { color: '#64748b', font: { size: 9, family: 'JetBrains Mono' }, maxTicksLimit: 6 }
         },
         y: {
           grid: { color: 'rgba(255, 255, 255, 0.04)' },
           ticks: {
             color: '#64748b',
-            font: { size: 9 },
+            font: { size: 9, family: 'JetBrains Mono' },
             callback: function(value) {
               return (value / 1000).toLocaleString('id-ID') + 'k';
             }

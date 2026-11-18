@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jurnaltrade-shell-v1';
+const CACHE_NAME = 'jurnaltrade-shell-v2';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const SHELL_ASSETS = [
   './js/risk_calc.js',
   './js/account_backup.js',
   './js/pair_presets.js',
+  './js/ui_ux.js',
   './js/auth.js',
   './icon.svg',
   './manifest.json'

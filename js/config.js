@@ -52,11 +52,17 @@ function saveToStorage() {
   if (currentUserKey) {
     localStorage.setItem(STORE_KEY + '_' + currentUserKey, JSON.stringify(trades));
     localStorage.setItem(BALANCE_KEY + '_' + currentUserKey, initialBalance.toString());
+    if (typeof setCloudSyncState === 'function') setCloudSyncState('syncing');
     fbPut(`users/${currentUserKey}/jurnal_data`, {
       initialBalance: initialBalance,
       trades: trades,
       updatedAt: now
-    }).catch(err => console.error('Gagal simpan ke cloud:', err));
+    })
+    .then(() => { if (typeof setCloudSyncState === 'function') setCloudSyncState('synced'); })
+    .catch(err => {
+      console.error('Gagal simpan ke cloud:', err);
+      if (typeof setCloudSyncState === 'function') setCloudSyncState('offline');
+    });
   }
 }
 

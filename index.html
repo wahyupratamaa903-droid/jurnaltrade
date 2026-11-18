@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jurnal Trading Pro Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <meta name="theme-color" content="#070a13">
@@ -59,7 +62,12 @@
 
   <!-- BAR INFO AKUN & TOMBOL LOGOUT DI POJOK KANAN ATAS -->
   <div id="user-Session-bar" class="hidden bg-slate-900/90 border-b border-slate-800 px-4 py-1.5 text-[11px] flex flex-wrap justify-between items-center gap-2 text-slate-300">
-    <span>👤 Akun: <strong id="active-user-email" class="text-emerald-400 font-mono">-</strong></span>
+    <div class="flex items-center gap-2">
+      <span>👤 <strong id="active-user-email" class="text-emerald-400 font-mono">-</strong></span>
+      <span id="cloud-sync-badge" class="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+        <i class="fas fa-cloud-check text-emerald-400"></i> <span class="hidden sm:inline">Cloud Aktif</span>
+      </span>
+    </div>
     <div class="flex items-center gap-1.5">
       <button id="pwa-install-btn" onclick="triggerPwaInstall()" class="hidden bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded text-[10px] font-bold transition">
         <i class="fas fa-download mr-1"></i>Instal App
@@ -590,6 +598,7 @@
       });
     }
   </script>
+  <script src="js/ui_ux.js"></script>
   <script src="js/auth.js"></script>
 </body>
 </html>

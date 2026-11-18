@@ -237,4 +237,5 @@ function exportCSV() {
   a.href = url;
   a.download = `jurnal_analytics_${Date.now()}.csv`;
   a.click();
+  if (typeof showToast === 'function') showToast('File CSV berhasil diunduh!');
 }

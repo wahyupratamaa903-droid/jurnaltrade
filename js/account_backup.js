@@ -76,6 +76,7 @@ function exportBackupJSON() {
   a.download = `backup_jurnal_${dateTag}.json`;
   a.click();
   URL.revokeObjectURL(url);
+  if (typeof showToast === 'function') showToast('Backup JSON berhasil disimpan!');
 }
 
 function handleRestoreJSON(event) {
@@ -111,7 +112,7 @@ function handleRestoreJSON(event) {
 
       saveToStorage();
       closeAccountModal();
-      alert(`Restore berhasil! Total transaksi saat ini: ${trades.length} posisi.`);
+      if (typeof showToast === 'function') showToast(`Restore berhasil (${trades.length} posisi).`); else alert(`Restore berhasil! Total transaksi saat ini: ${trades.length} posisi.`);
     } catch (err) {
       alert('Gagal membaca file JSON: ' + err.message);
     } finally {
