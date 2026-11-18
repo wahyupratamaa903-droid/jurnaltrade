@@ -16,6 +16,7 @@ body {
     radial-gradient(circle at 85% 5%, rgba(245, 158, 11, 0.05), transparent 35%);
   font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: contain;
 }
 
 /* Angka finansial sejajar presisi (Tabular Numbers) */
@@ -40,7 +41,7 @@ input[type="number"] {
   border-color: var(--border-strong);
 }
 
-/* Tabel Jurnal & Sticky Kolom Nomor untuk layar HP */
+/* Tabel Jurnal */
 .sheet-table th {
   background: #0b1120;
   border: 1px solid #1e293b;
@@ -52,18 +53,6 @@ input[type="number"] {
 .sheet-table td {
   border: 1px solid rgba(30, 41, 59, 0.85);
   white-space: nowrap;
-}
-
-.sheet-table th:first-child,
-.sheet-table td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 12;
-  background: #0b1120;
-}
-
-.sheet-table th:first-child {
-  z-index: 20;
 }
 
 .sheet-table tr:hover td {
@@ -86,7 +75,7 @@ input[type="number"] {
   background: rgba(148, 163, 184, 0.7);
 }
 
-/* Animasi Fade-In & Scale untuk Pop-up Modal */
+/* Animasi Modal Desktop & Bottom Sheet Mobile */
 @keyframes backdropFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -103,6 +92,17 @@ input[type="number"] {
   }
 }
 
+@keyframes bottomSheetSlideUp {
+  from {
+    opacity: 0.4;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .modal-animate-backdrop {
   animation: backdropFadeIn 0.2s ease-out forwards;
 }
@@ -111,7 +111,45 @@ input[type="number"] {
   animation: modalScaleIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Animasi Halus Saat Baris Transaksi Dihapus */
+.bottom-sheet-handle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  #entry-modal.flex,
+  #detail-modal.flex,
+  #account-modal.flex {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  #entry-modal .modal-animate-box,
+  #detail-modal .modal-animate-box,
+  #account-modal .modal-animate-box {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+    border-bottom: none !important;
+    max-height: 90vh !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 1.5rem !important;
+    animation: bottomSheetSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .bottom-sheet-handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.35);
+    margin: 0 auto 12px auto;
+  }
+}
+
+/* Animasi Halus Saat Baris / Kartu Transaksi Dihapus */
 .trade-row {
   transition: opacity 0.28s ease, transform 0.28s ease, background-color 0.2s ease;
 }

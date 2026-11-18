@@ -126,9 +126,9 @@ function handleFormSubmit(e) {
 
 function deleteRow(id) {
   if (confirm('Hapus baris transaksi ini?')) {
-    const rowEl = document.querySelector(`tr[data-trade-id="${id}"]`);
-    if (rowEl) {
-      rowEl.classList.add('row-removing');
+    const targets = document.querySelectorAll(`[data-trade-id="${id}"]`);
+    if (targets.length > 0) {
+      targets.forEach(el => el.classList.add('row-removing'));
       setTimeout(() => {
         trades = trades.filter(t => t.id !== id);
         saveToStorage();
@@ -165,6 +165,8 @@ function renderSheet() {
       ? `${baseList.length} Posisi Tercatat`
       : `${filtered.length} dari ${baseList.length} Posisi`;
   }
+
+  if (typeof renderCardsList === 'function') renderCardsList(filtered, baseList.length === 0);
 
   if (filtered.length === 0) {
     tbody.innerHTML = `
@@ -223,6 +225,93 @@ function renderSheet() {
       </tr>
     `;
   }).join('');
+}
+
+
+function renderCardsList(filtered, isEmptyAll) {
+  const container = document.getElementById('cards-view-wrapper');
+  if (!container) return;
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="p-8 text-center text-slate-500 font-sans text-xs">
+        ${isEmptyAll
+          ? 'Belum ada data transaksi pada periode ini.'
+          : 'Tidak ada transaksi yang cocok dengan filter.'}
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-3">` + filtered.map((t) => {
+    const isBuy = t.side === 'BUY';
+    const sideBadge = isBuy
+      ? '<span class="bg-emerald-950/90 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded text-[9px] font-bold">BUY</span>'
+      : '<span class="bg-rose-950/90 text-rose-400 border border-rose-800 px-1.5 py-0.5 rounded text-[9px] font-bold">SELL</span>';
+
+    let statusBadge = '';
+    if (t.status === 'TP') statusBadge = '<span class="bg-emerald-600 text-slate-950 font-black px-2 py-0.5 rounded text-[9px]">TP</span>';
+    else if (t.status === 'SL') statusBadge = '<span class="bg-rose-600 text-white font-black px-2 py-0.5 rounded text-[9px]">SL</span>';
+    else if (t.status === 'SL+') statusBadge = '<span class="bg-yellow-500 text-slate-950 font-black px-1.5 py-0.5 rounded text-[9px]">SL+</span>';
+    else statusBadge = '<span class="bg-slate-700 text-slate-300 font-bold px-1.5 py-0.5 rounded text-[9px]">BE</span>';
+
+    const net = (t.profit || 0) - (t.loss || 0);
+    const pnlText = net > 0
+      ? `+Rp ${net.toLocaleString('id-ID')}`
+      : (net < 0 ? `-Rp ${Math.abs(net).toLocaleString('id-ID')}` : 'Rp 0');
+    const pnlColor = net > 0 ? 'text-emerald-400' : (net < 0 ? 'text-rose-400' : 'text-slate-300');
+    const eqValue = typeof t.calculatedEquity === 'number' ? t.calculatedEquity : initialBalance;
+
+    return `
+      <div data-trade-id="${t.id}" class="trade-row bg-slate-950/85 border border-slate-800/90 hover:border-slate-700 rounded-xl p-3 space-y-2.5 shadow-md">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[10px] font-mono text-slate-500">#${t.origIndex}</span>
+            <span class="font-black text-amber-400 text-xs">${t.pair}</span>
+            ${sideBadge}
+            <span class="text-[10px] font-mono text-slate-300 font-bold">${t.lot} Lot</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-slate-400 font-mono">${t.date}</span>
+            ${statusBadge}
+          </div>
+        </div>
+
+        <div class="flex items-baseline justify-between bg-slate-900/80 border border-slate-800/70 px-2.5 py-2 rounded-lg font-mono">
+          <div>
+            <span class="text-[9px] text-slate-500 uppercase block">Hasil PnL</span>
+            <span class="text-sm font-black ${pnlColor}">${pnlText}</span>
+          </div>
+          <div class="text-right text-[10px] text-slate-400 space-y-0.5">
+            <div>Sesi: <strong class="text-slate-200 font-sans">${t.session || 'Asia'}</strong> • Pips: <strong class="text-slate-200">${t.pips}</strong></div>
+            <div>Equity: <strong class="text-slate-100">Rp ${eqValue.toLocaleString('id-ID')}</strong></div>
+          </div>
+        </div>
+
+        <div onclick="openDetailModal(${t.id})" class="text-[11px] text-slate-400 space-y-1 cursor-pointer hover:text-slate-200 transition">
+          <p class="truncate"><span class="text-amber-400/90 font-semibold">Analisa:</span> ${t.reason}</p>
+          <p class="truncate"><span class="text-blue-400/90 font-semibold">Psikologi:</span> ${t.info}</p>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[10px] font-mono">
+          <div class="flex items-center gap-2">
+            <button onclick="openDetailModal(${t.id})" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+              <i class="fas fa-eye mr-1 text-blue-400"></i>Detail
+            </button>
+            ${t.doc ? `<a href="${t.doc}" target="_blank" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-blue-400 transition"><i class="fas fa-image mr-1"></i>Chart</a>` : ''}
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openModal(${t.id})" class="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 transition">
+              <i class="fas fa-pen-to-square mr-1"></i>Edit
+            </button>
+            <button onclick="deleteRow(${t.id})" class="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 transition">
+              <i class="fas fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('') + `</div>`;
 }
 
 function exportCSV() {

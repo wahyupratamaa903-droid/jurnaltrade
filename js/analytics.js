@@ -132,9 +132,13 @@ function updateChartsAndStats() {
     }
   });
 
-  document.getElementById('current-equity').textContent = `Rp ${m.running.toLocaleString('id-ID')}`;
-  document.getElementById('capital-gain').textContent = `${gain >= 0 ? '+' : ''}${gain}%`;
-  document.getElementById('capital-gain').className = `font-black ${gain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+  if (typeof animateEquityTicker === 'function') {
+    animateEquityTicker(m.running, gain, parseFloat(gain) >= 0);
+  } else {
+    document.getElementById('current-equity').textContent = `Rp ${m.running.toLocaleString('id-ID')}`;
+    document.getElementById('capital-gain').textContent = `${gain >= 0 ? '+' : ''}${gain}%`;
+    document.getElementById('capital-gain').className = `font-black ${gain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+  }
   document.getElementById('stat-winrate').textContent = `${winRate}%`;
   document.getElementById('stat-winloss-count').textContent = `${m.winCount}W - ${m.lossCount}L (${totalTrades} Posisi)`;
   document.getElementById('stat-mdd').textContent = `-${m.maxDdPercent.toFixed(2)}%`;
