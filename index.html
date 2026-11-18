@@ -330,15 +330,27 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script>
     const STORE_KEY = 'sheet_trading_data_v2';
     const BALANCE_KEY = 'sheet_trading_init_bal';
+
+    const firebaseConfig = {
+      databaseURL: "https://jurnal-trading-514b2-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const dbRef = firebase.database().ref("jurnal_trading_v2");
 
     let trades = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
     let initialBalance = parseFloat(localStorage.getItem(BALANCE_KEY) || '2000000');
     let equityChartInstance = null;
 
     document.getElementById('initial-balance').value = initialBalance;
+    document.getElementById("initial-balance").addEventListener("change", () => {
+      initialBalance = parseFloat(document.getElementById("initial-balance").value) || 0;
+      saveToStorage();
+    });
 
     function detectSession() {
       const hour = new Date().getHours();
@@ -351,7 +363,21 @@
       localStorage.setItem(STORE_KEY, JSON.stringify(trades));
       localStorage.setItem(BALANCE_KEY, initialBalance.toString());
       updateAll();
+      dbRef.set({ initialBalance: initialBalance, trades: trades, updatedAt: Date.now() });
     }
+    dbRef.on("value", (snapshot) => {
+      const cloudData = snapshot.val();
+      if (cloudData) {
+        trades = cloudData.trades || [];
+        initialBalance = typeof cloudData.initialBalance === "number" ? cloudData.initialBalance : 2000000;
+        document.getElementById("initial-balance").value = initialBalance;
+        localStorage.setItem(STORE_KEY, JSON.stringify(trades));
+        localStorage.setItem(BALANCE_KEY, initialBalance.toString());
+        updateAll();
+      } else if (trades.length > 0) {
+        saveToStorage();
+      }
+    });
 
     function openModal(tradeId = null) {
       const form = document.getElementById('trade-form');
