@@ -1,4 +1,3 @@
-// Filter tabel hanya memanggil renderSheet() tanpa menggambar ulang Chart.js
 function applyTableFilters() {
   renderSheet();
 }
@@ -145,11 +144,15 @@ function renderSheet() {
   const tbody = document.getElementById('sheet-body');
   const badge = document.getElementById('total-rows-badge');
 
+  const baseList = typeof getPeriodScopedTrades === 'function'
+    ? getPeriodScopedTrades().scopedTrades
+    : trades;
+
   const qPair = (document.getElementById('filter-pair')?.value || '').trim().toUpperCase();
   const qSession = document.getElementById('filter-session')?.value || 'ALL';
   const qStatus = document.getElementById('filter-status')?.value || 'ALL';
 
-  const indexedTrades = trades.map((t, i) => ({ ...t, origIndex: i + 1 }));
+  const indexedTrades = baseList.map((t, i) => ({ ...t, origIndex: i + 1 }));
   const filtered = indexedTrades.filter(t => {
     const matchPair = !qPair || (t.pair || '').includes(qPair);
     const matchSess = qSession === 'ALL' || (t.session || 'Asia') === qSession;
@@ -158,17 +161,17 @@ function renderSheet() {
   });
 
   if (badge) {
-    badge.textContent = filtered.length === trades.length
-      ? `${trades.length} Posisi Tercatat`
-      : `${filtered.length} dari ${trades.length} Posisi`;
+    badge.textContent = filtered.length === baseList.length
+      ? `${baseList.length} Posisi Tercatat`
+      : `${filtered.length} dari ${baseList.length} Posisi`;
   }
 
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="17" class="p-8 text-center text-slate-500 font-sans">
-          ${trades.length === 0
-            ? 'Belum ada data transaksi. Klik tombol "+ Tambah Posisi" di atas.'
+          ${baseList.length === 0
+            ? 'Belum ada data transaksi pada periode ini.'
             : 'Tidak ada transaksi yang cocok dengan filter.'}
         </td>
       </tr>

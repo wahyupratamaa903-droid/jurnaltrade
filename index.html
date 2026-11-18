@@ -113,6 +113,40 @@
     </div>
   </div>
 
+  <!-- Filter Periode Waktu (Date Window) -->
+  <div class="glass-card rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+    <div class="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+      <span class="text-slate-400 font-bold uppercase mr-1 flex items-center gap-1.5">
+        <i class="fas fa-calendar-days text-emerald-400"></i> Periode:
+      </span>
+      <button type="button" data-period="ALL" onclick="setPeriodPreset('ALL')" class="period-btn px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition">
+        Semua
+      </button>
+      <button type="button" data-period="TODAY" onclick="setPeriodPreset('TODAY')" class="period-btn px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 transition">
+        Hari Ini
+      </button>
+      <button type="button" data-period="WEEK" onclick="setPeriodPreset('WEEK')" class="period-btn px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 transition">
+        7 Hari
+      </button>
+      <button type="button" data-period="MONTH" onclick="setPeriodPreset('MONTH')" class="period-btn px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 transition">
+        Bulan Ini
+      </button>
+      <button type="button" data-period="CUSTOM" onclick="setPeriodPreset('CUSTOM')" class="period-btn px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 transition">
+        Custom
+      </button>
+    </div>
+
+    <div id="custom-date-inputs" class="hidden flex-wrap items-center gap-1.5 font-mono text-[10px]">
+      <input type="date" id="period-start" onchange="applyCustomDateRange()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200">
+      <span class="text-slate-500">s/d</span>
+      <input type="date" id="period-end" onchange="applyCustomDateRange()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200">
+    </div>
+
+    <span id="period-summary-badge" class="font-mono text-[10px] text-slate-400">
+      Menampilkan semua posisi
+    </span>
+  </div>
+
   <!-- Key Statistics Grid -->
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
     <div class="glass-card rounded-xl p-3">
@@ -183,6 +217,15 @@
           <i class="fas fa-clock text-blue-400"></i> Performa Sesi Trading
         </h2>
         <div id="session-performance-list" class="grid grid-cols-3 gap-1.5 text-center">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800 pt-3">
+        <h2 class="text-xs font-black text-slate-200 mb-2 flex items-center gap-2">
+          <i class="fas fa-brain text-purple-400"></i> Analisa Psikologi Trading
+        </h2>
+        <div id="psych-performance-list" class="grid grid-cols-2 gap-1.5 text-center">
           <!-- Rendered by JS -->
         </div>
       </div>
@@ -455,6 +498,7 @@
   </div>
 
         <script src="js/config.js"></script>
+  <script src="js/period_filter.js"></script>
   <script src="js/analytics.js"></script>
   <script src="js/trades.js"></script>
   <script src="js/risk_calc.js"></script>

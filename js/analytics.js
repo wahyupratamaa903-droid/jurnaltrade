@@ -4,8 +4,15 @@ function calculateMetrics() {
   initialBalance = parseFloat(document.getElementById('initial-balance').value) || 0;
   localStorage.setItem(BALANCE_KEY, initialBalance.toString());
 
-  let running = initialBalance;
-  let peak = initialBalance;
+  const scope = typeof getPeriodScopedTrades === 'function'
+    ? getPeriodScopedTrades()
+    : { scopedTrades: trades, startEquity: initialBalance, isFiltered: false };
+
+  const activeTrades = scope.scopedTrades;
+  const startEq = scope.startEquity;
+
+  let running = startEq;
+  let peak = startEq;
   let maxDdAmount = 0;
   let maxDdPercent = 0;
 
@@ -14,8 +21,8 @@ function calculateMetrics() {
   let winCount = 0;
   let lossCount = 0;
 
-  const equityHistory = [initialBalance];
-  const labels = ['Modal Awal'];
+  const equityHistory = [startEq];
+  const labels = [scope.isFiltered ? 'Awal Periode' : 'Modal Awal'];
 
   const pairStats = {};
   const sessionStats = {
@@ -24,7 +31,7 @@ function calculateMetrics() {
     'New York': { wins: 0, total: 0, pnl: 0 }
   };
 
-  trades.forEach((t) => {
+  activeTrades.forEach((t) => {
     const isWin = t.status === 'TP' || t.status === 'SL+';
     const isLoss = t.status === 'SL';
 
@@ -71,6 +78,8 @@ function calculateMetrics() {
   });
 
   return {
+    activeTrades,
+    startEq,
     running,
     maxDdAmount,
     maxDdPercent,
@@ -85,12 +94,11 @@ function calculateMetrics() {
   };
 }
 
-// Memperbarui kartu statistik & grafik (dipanggil hanya saat data berubah)
 function updateChartsAndStats() {
   const m = calculateMetrics();
-  const totalTrades = trades.length;
+  const totalTrades = m.activeTrades.length;
   const winRate = totalTrades > 0 ? ((m.winCount / totalTrades) * 100).toFixed(1) : 0;
-  const gain = initialBalance > 0 ? (((m.running - initialBalance) / initialBalance) * 100).toFixed(2) : 0;
+  const gain = m.startEq > 0 ? (((m.running - m.startEq) / m.startEq) * 100).toFixed(2) : 0;
 
   let profitFactor = '0.00';
   if (m.totalGrossLoss === 0 && m.totalGrossProfit > 0) profitFactor = 'MAX';
@@ -140,11 +148,11 @@ function updateChartsAndStats() {
 
   renderPairList(m.pairStats);
   renderSessionList(m.sessionStats);
+  if (typeof renderPsychologyStats === 'function') renderPsychologyStats(m.activeTrades);
   if (typeof evaluateDailyLossLimit === 'function') evaluateDailyLossLimit(m.running);
   renderChart(m.labels, m.equityHistory);
 }
 
-// Memperbarui seluruh tampilan (Statistik + Grafik + Tabel)
 function updateAll() {
   updateChartsAndStats();
   renderSheet();
@@ -154,7 +162,7 @@ function renderPairList(pairStats) {
   const container = document.getElementById('pair-performance-list');
   const pairs = Object.keys(pairStats);
   if (pairs.length === 0) {
-    container.innerHTML = '<p class="text-[10px] text-slate-500 py-2 text-center">Belum ada data pair</p>';
+    container.innerHTML = '<p class="text-[10px] text-slate-500 py-2 text-center">Belum ada data pair pada periode ini</p>';
     return;
   }
 
@@ -197,7 +205,6 @@ function renderChart(labels, dataPoints) {
   const ctx = document.getElementById('equityChart').getContext('2d');
   const ptRadius = dataPoints.length > 20 ? 1 : 3;
 
-  // Perbarui data langsung tanpa menghancurkan canvas jika chart sudah ada
   if (equityChartInstance) {
     equityChartInstance.data.labels = labels;
     equityChartInstance.data.datasets[0].data = dataPoints;
