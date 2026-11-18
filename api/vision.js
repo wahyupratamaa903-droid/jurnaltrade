@@ -2,21 +2,25 @@ function cleanEnv(val) {
   return (val || '').replace(/[\r\n\s]+/g, '').trim();
 }
 
-async function detectActiveModel(modelsUrl, apiKey, keywords, fallbackList) {
+async function getLiveFreeVisionModels() {
   try {
-    const res = await fetch(modelsUrl, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    });
+    const res = await fetch('https://openrouter.ai/api/v1/models');
     if (res.ok) {
       const json = await res.json();
-      const ids = (json.data || []).map(m => m.id);
-      for (const kw of keywords) {
-        const found = ids.find(id => id.toLowerCase().includes(kw));
-        if (found) return [found, ...fallbackList.filter(f => f !== found)];
+      const models = Array.isArray(json.data) ? json.data : [];
+      const freeVision = models
+        .filter(m => {
+          const id = String(m.id || '');
+          const modal = m.architecture?.input_modalities || [];
+          return id.endsWith(':free') && modal.includes('image');
+        })
+        .map(m => m.id);
+      if (freeVision.length > 0) {
+        return freeVision.slice(0, 4);
       }
     }
   } catch (_) {}
-  return fallbackList;
+  return ['openrouter/free'];
 }
 
 module.exports = async function handler(req, res) {
@@ -48,116 +52,62 @@ Ekstrak informasi trading dan kembalikan HANYA objek JSON murni tanpa teks lain:
 - "reason": rangkuman teknikal / harga entry-exit / pola struktur chart yang terlihat pada gambar dalam bahasa Indonesia.
 - "info": catatan kondisi eksekusi atau "-" jika tidak ada.`;
 
-  const groqKey = cleanEnv(process.env.GROQ_API_KEY);
-  const nvidiaKey = cleanEnv(process.env.NVIDIA_API_KEY);
   const orKey1 = cleanEnv(process.env.OPENROUTER_KEY_1);
   const orKey2 = cleanEnv(process.env.OPENROUTER_KEY_2);
 
-  const visionProviders = [];
-
-  // 1. OpenRouter Auto-Free Router & Model Vision Aktif (Paling stabil untuk gambar)
-  if (orKey1) {
-    visionProviders.push({
-      name: 'OpenRouter Vision-1',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: orKey1,
-      model: 'google/gemma-3-27b-it:free',
-      extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
-    });
-    visionProviders.push({
-      name: 'OpenRouter Auto-Free',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: orKey1,
-      model: 'openrouter/free',
-      extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
-    });
+  if (!orKey1 && !orKey2) {
+    return res.status(503).json({ error: 'OPENROUTER_KEY belum diatur di Vercel.' });
   }
 
-  // 2. Groq Vision (Deteksi otomatis model vision aktif di akun Groq)
-  if (groqKey) {
-    const groqModels = await detectActiveModel(
-      'https://api.groq.com/openai/v1/models',
-      groqKey,
-      ['vision', 'scout', 'maverick', 'llava'],
-      ['llama-3.2-11b-vision-preview', 'meta-llama/llama-4-maverick-17b-128e-instruct']
-    );
-    visionProviders.push({
-      name: 'Groq Vision',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: groqKey,
-      model: groqModels[0]
-    });
+  const liveModels = await getLiveFreeVisionModels();
+  if (!liveModels.includes('openrouter/free')) {
+    liveModels.push('openrouter/free');
   }
 
-  // 3. NVIDIA NIM Vision (Deteksi otomatis model vision aktif di NVIDIA)
-  if (nvidiaKey) {
-    const nvModels = await detectActiveModel(
-      'https://integrate.api.nvidia.com/v1/models',
-      nvidiaKey,
-      ['vision', 'nemotron-nano-12b-v2-vl', 'vila', 'qwen2.5-vl', 'phi-3.5-vision'],
-      ['nvidia/nemotron-nano-12b-v2-vl', 'microsoft/phi-3.5-vision-instruct']
-    );
-    visionProviders.push({
-      name: 'NVIDIA Vision',
-      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
-      key: nvidiaKey,
-      model: nvModels[0]
-    });
-  }
-
-  if (orKey2) {
-    visionProviders.push({
-      name: 'OpenRouter Vision-2',
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      key: orKey2,
-      model: 'mistralai/mistral-small-3.1-24b-instruct:free',
-      extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
-    });
-  }
-
-  if (visionProviders.length === 0) {
-    return res.status(503).json({ error: 'API Key Vision belum diatur di Environment Variables Vercel.' });
-  }
-
+  const keys = [orKey1, orKey2].filter(Boolean);
   const errors = [];
-  for (const p of visionProviders) {
-    try {
-      const response = await fetch(p.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${p.key}`,
-          ...(p.extraHeaders || {})
-        },
-        body: JSON.stringify({
-          model: p.model,
-          temperature: 0.1,
-          max_tokens: 900,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: promptText },
-                { type: 'image_url', image_url: { url: imageBase64 } }
-              ]
-            }
-          ]
-        })
-      });
 
-      if (!response.ok) {
-        const errTxt = await response.text();
-        errors.push(`${p.name} [${p.model}] (${response.status}): ${errTxt.slice(0, 75)}`);
-        continue;
-      }
+  for (const modelId of liveModels) {
+    for (let i = 0; i < keys.length; i++) {
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${keys[i]}`,
+            'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app',
+            'X-Title': 'Jurnal Trading Analytics'
+          },
+          body: JSON.stringify({
+            model: modelId,
+            temperature: 0.1,
+            max_tokens: 900,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: promptText },
+                  { type: 'image_url', image_url: { url: imageBase64 } }
+                ]
+              }
+            ]
+          })
+        });
 
-      const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content;
-      if (content) {
-        return res.status(200).json({ content, provider: `${p.name} (${p.model})` });
+        if (!response.ok) {
+          const errTxt = await response.text();
+          errors.push(`${modelId} (${response.status}): ${errTxt.slice(0, 70)}`);
+          continue;
+        }
+
+        const data = await response.json();
+        const content = data?.choices?.[0]?.message?.content;
+        if (content) {
+          return res.status(200).json({ content, provider: `OpenRouter (${modelId})` });
+        }
+      } catch (err) {
+        errors.push(`${modelId}: ${err.message}`);
       }
-    } catch (err) {
-      errors.push(`${p.name}: ${err.message}`);
     }
   }
 

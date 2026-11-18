@@ -28,6 +28,20 @@ function compressImageToBase64(file, maxWidth = 1100, quality = 0.82) {
   });
 }
 
+async function extractTextViaBrowserOcr(imageDataUrl) {
+  if (!window.Tesseract) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Gagal memuat mesin OCR.'));
+      document.head.appendChild(s);
+    });
+  }
+  const result = await window.Tesseract.recognize(imageDataUrl, 'eng');
+  return (result?.data?.text || '').replace(/\s+/g, ' ').trim();
+}
+
 async function handleScreenshotScan(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -59,22 +73,38 @@ async function handleScreenshotScan(event) {
     });
 
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || `Vision Error (${res.status})`);
+    if (res.ok && data.content) {
+      const cleaned = data.content.replace(/```json|```/gi, '').trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+
+      if (typeof applyParsedDataToForm === 'function') {
+        applyParsedDataToForm(parsed);
+      }
+
+      if (statusEl) {
+        statusEl.innerHTML = `<span class="text-emerald-400"><i class="fas fa-circle-check mr-1"></i>Screenshot berhasil dipindai oleh <strong>${data.provider}</strong>! Periksa kolom lalu klik Simpan.</span>`;
+      }
+      if (typeof showToast === 'function') showToast('Data screenshot berhasil diekstrak!');
+      return;
     }
 
-    const cleaned = data.content.replace(/```json|```/gi, '').trim();
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
-
-    if (typeof applyParsedDataToForm === 'function') {
-      applyParsedDataToForm(parsed);
-    }
-
+    // Fallback Otomatis: Baca teks gambar via Browser OCR -> proses dengan AI Auto-Fill
     if (statusEl) {
-      statusEl.innerHTML = `<span class="text-emerald-400"><i class="fas fa-circle-check mr-1"></i>Screenshot berhasil dipindai oleh <strong>${data.provider}</strong>! Periksa kolom lalu klik Simpan.</span>`;
+      statusEl.innerHTML = '<span class="text-amber-300"><i class="fas fa-spinner fa-spin mr-1"></i>Membaca angka & teks screenshot via OCR lokal...</span>';
     }
-    if (typeof showToast === 'function') showToast('Data screenshot berhasil diekstrak!');
+    const ocrText = await extractTextViaBrowserOcr(base64Img);
+    if (!ocrText || ocrText.length < 4) {
+      throw new Error('Teks pada gambar tidak terbaca jelas.');
+    }
+
+    const inputEl = document.getElementById('ai-autofill-input');
+    if (inputEl) {
+      inputEl.value = `[Hasil Scan Screenshot]: ${ocrText.slice(0, 380)}`;
+    }
+    if (typeof runAiAutoFill === 'function') {
+      await runAiAutoFill();
+    }
   } catch (err) {
     if (statusEl) {
       statusEl.innerHTML = `<span class="text-rose-400">Gagal scan gambar: ${err.message}</span>`;
