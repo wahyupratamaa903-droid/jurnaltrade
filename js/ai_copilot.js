@@ -361,8 +361,12 @@ async function askAiJournalAnalyst(presetQuestion = null) {
       .replace(/\n/g, '<br>');
 
     outEl.innerHTML = `
-      <div class="text-[10px] font-mono text-emerald-400 mb-1.5 flex items-center justify-between">
+      <div class="text-[10px] font-mono text-emerald-400 mb-2 pb-1.5 border-b border-slate-800 flex items-center justify-between gap-2">
         <span><i class="fas fa-robot mr-1"></i>Dijawab oleh ${res.provider}</span>
+        <button type="button" id="ai-tts-btn" onclick="playAiCopilotAudio()"
+          class="px-2 py-0.5 rounded bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-purple-200 font-bold transition">
+          <i class="fas fa-volume-high mr-1"></i>Dengarkan Audio
+        </button>
       </div>
       <div class="text-xs text-slate-200 leading-relaxed">${formatted}</div>
     `;

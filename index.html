@@ -340,10 +340,19 @@
             </span>
             <span class="text-[9px] text-slate-400 font-mono">Isi semua kolom otomatis</span>
           </div>
-          <div class="flex gap-1.5">
+          <div class="flex items-center gap-1.5">
             <input type="text" id="ai-autofill-input"
-              placeholder="Contoh: buy xauusd 0.05 sesi london tp 450rb rr 1:2 pips 30 karena sweep asian low"
-              class="flex-1 bg-slate-950/90 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-purple-400">
+              placeholder="Ketik / rekam suara / scan foto..."
+              class="flex-1 min-w-0 bg-slate-950/90 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-purple-400">
+            <button type="button" id="ai-voice-btn" onclick="toggleVoiceJournalRecording()" title="Rekam Suara (Voice-to-Journal)"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-rose-400 font-bold text-[11px] shrink-0 transition">
+              <i class="fas fa-microphone"></i>
+            </button>
+            <label title="Scan Screenshot MT4/MT5 / Chart"
+              class="px-2.5 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-500/40 text-cyan-300 font-bold text-[11px] shrink-0 cursor-pointer transition flex items-center gap-1">
+              <span id="ai-scan-btn-label"><i class="fas fa-camera"></i></span>
+              <input type="file" accept="image/*" onchange="handleScreenshotScan(event)" class="hidden">
+            </label>
             <button type="button" id="ai-autofill-btn" onclick="runAiAutoFill()"
               class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] shrink-0 transition flex items-center gap-1">
               <i class="fas fa-bolt"></i> Isi
@@ -381,10 +390,16 @@
             <span class="text-[10px] font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
               <i class="fas fa-newspaper text-blue-400"></i> Radar Berita & Sentimen Pair
             </span>
-            <button type="button" id="news-radar-btn" onclick="fetchPairNewsRadar()"
-              class="px-2.5 py-1 rounded-lg bg-blue-600/25 hover:bg-blue-600/40 border border-blue-500/40 text-blue-300 font-mono text-[10px] font-bold transition flex items-center gap-1">
-              <i class="fas fa-satellite-dish"></i> Cek Berita Live
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="cal-radar-btn" onclick="fetchLiveEconomicCalendar()"
+                class="px-2 py-1 rounded-lg bg-amber-600/20 hover:bg-amber-600/35 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-bold transition flex items-center gap-1">
+                <i class="fas fa-calendar-day"></i> Kalender
+              </button>
+              <button type="button" id="news-radar-btn" onclick="fetchPairNewsRadar()"
+                class="px-2.5 py-1 rounded-lg bg-blue-600/25 hover:bg-blue-600/40 border border-blue-500/40 text-blue-300 font-mono text-[10px] font-bold transition flex items-center gap-1">
+                <i class="fas fa-satellite-dish"></i> Berita Live
+              </button>
+            </div>
           </div>
           <div id="news-radar-result" class="hidden bg-slate-900/70 border border-slate-800 rounded-lg p-2.5 space-y-2"></div>
         </div>
@@ -689,6 +704,7 @@
   <script src="js/ui_ux.js"></script>
   <script src="js/api_vault.js"></script>
   <script src="js/ai_copilot.js"></script>
+  <script src="js/multimodal.js"></script>
   <script src="js/auth.js"></script>
 </body>
 </html>

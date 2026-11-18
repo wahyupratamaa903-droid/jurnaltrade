@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jurnaltrade-shell-v6';
+const CACHE_NAME = 'jurnaltrade-shell-v7';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const SHELL_ASSETS = [
   './js/ui_ux.js',
   './js/api_vault.js',
   './js/ai_copilot.js',
+  './js/multimodal.js',
   './js/auth.js',
   './icon.svg',
   './manifest.json'
