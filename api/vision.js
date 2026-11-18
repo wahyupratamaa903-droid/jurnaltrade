@@ -2,6 +2,23 @@ function cleanEnv(val) {
   return (val || '').replace(/[\r\n\s]+/g, '').trim();
 }
 
+async function detectActiveModel(modelsUrl, apiKey, keywords, fallbackList) {
+  try {
+    const res = await fetch(modelsUrl, {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const ids = (json.data || []).map(m => m.id);
+      for (const kw of keywords) {
+        const found = ids.find(id => id.toLowerCase().includes(kw));
+        if (found) return [found, ...fallbackList.filter(f => f !== found)];
+      }
+    }
+  } catch (_) {}
+  return fallbackList;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -38,43 +55,68 @@ Ekstrak informasi trading dan kembalikan HANYA objek JSON murni tanpa teks lain:
 
   const visionProviders = [];
 
-  if (groqKey) {
-    visionProviders.push({
-      name: 'Groq Vision (Llama 4 Scout)',
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      key: groqKey,
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct'
-    });
-  }
-  if (nvidiaKey) {
-    visionProviders.push({
-      name: 'NVIDIA NIM Vision',
-      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
-      key: nvidiaKey,
-      model: 'meta/llama-3.2-90b-vision-instruct'
-    });
-  }
+  // 1. OpenRouter Auto-Free Router & Model Vision Aktif (Paling stabil untuk gambar)
   if (orKey1) {
     visionProviders.push({
       name: 'OpenRouter Vision-1',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: orKey1,
-      model: 'google/gemini-2.0-flash-lite-preview-02-05:free',
+      model: 'google/gemma-3-27b-it:free',
+      extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
+    });
+    visionProviders.push({
+      name: 'OpenRouter Auto-Free',
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      key: orKey1,
+      model: 'openrouter/free',
       extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
     });
   }
+
+  // 2. Groq Vision (Deteksi otomatis model vision aktif di akun Groq)
+  if (groqKey) {
+    const groqModels = await detectActiveModel(
+      'https://api.groq.com/openai/v1/models',
+      groqKey,
+      ['vision', 'scout', 'maverick', 'llava'],
+      ['llama-3.2-11b-vision-preview', 'meta-llama/llama-4-maverick-17b-128e-instruct']
+    );
+    visionProviders.push({
+      name: 'Groq Vision',
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      key: groqKey,
+      model: groqModels[0]
+    });
+  }
+
+  // 3. NVIDIA NIM Vision (Deteksi otomatis model vision aktif di NVIDIA)
+  if (nvidiaKey) {
+    const nvModels = await detectActiveModel(
+      'https://integrate.api.nvidia.com/v1/models',
+      nvidiaKey,
+      ['vision', 'nemotron-nano-12b-v2-vl', 'vila', 'qwen2.5-vl', 'phi-3.5-vision'],
+      ['nvidia/nemotron-nano-12b-v2-vl', 'microsoft/phi-3.5-vision-instruct']
+    );
+    visionProviders.push({
+      name: 'NVIDIA Vision',
+      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+      key: nvidiaKey,
+      model: nvModels[0]
+    });
+  }
+
   if (orKey2) {
     visionProviders.push({
       name: 'OpenRouter Vision-2',
       url: 'https://openrouter.ai/api/v1/chat/completions',
       key: orKey2,
-      model: 'qwen/qwen2.5-vl-72b-instruct:free',
+      model: 'mistralai/mistral-small-3.1-24b-instruct:free',
       extraHeaders: { 'HTTP-Referer': 'https://jurnaltrade-eta.vercel.app', 'X-Title': 'Jurnal Trading Analytics' }
     });
   }
 
   if (visionProviders.length === 0) {
-    return res.status(503).json({ error: 'API Key Vision (GROQ_API_KEY / NVIDIA_API_KEY) belum diatur di Vercel.' });
+    return res.status(503).json({ error: 'API Key Vision belum diatur di Environment Variables Vercel.' });
   }
 
   const errors = [];
@@ -105,14 +147,14 @@ Ekstrak informasi trading dan kembalikan HANYA objek JSON murni tanpa teks lain:
 
       if (!response.ok) {
         const errTxt = await response.text();
-        errors.push(`${p.name} (${response.status}): ${errTxt.slice(0, 80)}`);
+        errors.push(`${p.name} [${p.model}] (${response.status}): ${errTxt.slice(0, 75)}`);
         continue;
       }
 
       const data = await response.json();
       const content = data?.choices?.[0]?.message?.content;
       if (content) {
-        return res.status(200).json({ content, provider: p.name });
+        return res.status(200).json({ content, provider: `${p.name} (${p.model})` });
       }
     } catch (err) {
       errors.push(`${p.name}: ${err.message}`);

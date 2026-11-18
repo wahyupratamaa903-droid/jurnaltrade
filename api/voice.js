@@ -8,9 +8,9 @@ module.exports = async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-  const action = body.action; // 'stt' atau 'tts'
+  const action = body.action;
 
-  // A. Speech-to-Text via Groq Whisper Large v3 Turbo
+  // A. Speech-to-Text via Groq Whisper
   if (action === 'stt') {
     const groqKey = cleanEnv(process.env.GROQ_API_KEY);
     if (!groqKey) {
@@ -36,9 +36,7 @@ module.exports = async function handler(req, res) {
 
       const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${groqKey}`
-        },
+        headers: { 'Authorization': `Bearer ${groqKey}` },
         body: formData
       });
 
@@ -53,7 +51,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // B. Text-to-Speech via ElevenLabs
+  // B. Text-to-Speech via ElevenLabs dengan batas waktu 6 detik
   if (action === 'tts') {
     const elKey = cleanEnv(process.env.ELEVENLABS_API_KEY);
     if (!elKey) {
@@ -61,20 +59,24 @@ module.exports = async function handler(req, res) {
     }
 
     const cleanText = String(body.text || '')
-      .replace(/[*#_`~]/g, '')
+      .replace(/\|[-:]+\|/g, ' ')
+      .replace(/[|*#_`~]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 750);
+      .slice(0, 600);
 
     if (!cleanText) {
       return res.status(400).json({ error: 'Teks kosong.' });
     }
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6500);
+
     try {
-      // Voice ID Multilingual v2 (Rachel / Adam)
       const voiceId = 'pNInz6obpgDQGcFmaJgB';
       const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'xi-api-key': elKey,
@@ -87,6 +89,8 @@ module.exports = async function handler(req, res) {
         })
       });
 
+      clearTimeout(timer);
+
       if (!response.ok) {
         const errTxt = await response.text();
         return res.status(response.status).json({ error: `ElevenLabs (${response.status}): ${errTxt.slice(0, 90)}` });
@@ -96,7 +100,8 @@ module.exports = async function handler(req, res) {
       const base64Audio = Buffer.from(arrayBuffer).toString('base64');
       return res.status(200).json({ audioBase64: `data:audio/mpeg;base64,${base64Audio}` });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      clearTimeout(timer);
+      return res.status(504).json({ error: 'Timeout / ElevenLabs tidak merespons.' });
     }
   }
 

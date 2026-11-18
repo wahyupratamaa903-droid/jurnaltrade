@@ -182,62 +182,93 @@ async function toggleVoiceJournalRecording() {
 }
 
 // ============================================================
-// 3. ELEVENLABS AUDIO BRIEFING DI AI TRADING COPILOT
+// 3. ELEVENLABS AUDIO BRIEFING + INSTANT DEVICE VOICE FALLBACK
 // ============================================================
 let currentTtsAudio = null;
+let isSpeakingDevice = false;
+
+function speakWithDeviceFallback(text, btn) {
+  if (!('speechSynthesis' in window)) {
+    if (btn) btn.innerHTML = '<i class="fas fa-volume-high mr-1"></i>Dengarkan Audio';
+    if (typeof showToast === 'function') showToast('Perangkat tidak mendukung pemutar suara.', 'error');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text.slice(0, 600));
+  utter.lang = 'id-ID';
+  utter.rate = 1.02;
+  utter.onstart = () => {
+    isSpeakingDevice = true;
+    if (btn) btn.innerHTML = '<i class="fas fa-stop mr-1 text-rose-400"></i>Hentikan Suara';
+  };
+  utter.onend = () => {
+    isSpeakingDevice = false;
+    if (btn) btn.innerHTML = '<i class="fas fa-volume-high mr-1"></i>Dengarkan Audio';
+  };
+  utter.onerror = () => {
+    isSpeakingDevice = false;
+    if (btn) btn.innerHTML = '<i class="fas fa-volume-high mr-1"></i>Dengarkan Audio';
+  };
+  window.speechSynthesis.speak(utter);
+}
 
 async function playAiCopilotAudio() {
   const outEl = document.getElementById('ai-analyst-output');
   const btn = document.getElementById('ai-tts-btn');
   if (!outEl) return;
 
-  if (currentTtsAudio && !currentTtsAudio.paused) {
-    currentTtsAudio.pause();
-    currentTtsAudio = null;
+  // Hentikan jika audio sedang diputar
+  if ((currentTtsAudio && !currentTtsAudio.paused) || isSpeakingDevice) {
+    if (currentTtsAudio) {
+      currentTtsAudio.pause();
+      currentTtsAudio = null;
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    isSpeakingDevice = false;
     if (btn) btn.innerHTML = '<i class="fas fa-volume-high mr-1"></i>Dengarkan Audio';
     return;
   }
 
-  const rawText = outEl.innerText.replace(/Dijawab oleh.*|Dengarkan Audio/gi, '').trim();
+  const rawText = outEl.innerText
+    .replace(/Dijawab oleh.*|Dengarkan Audio|Memuat Suara\.\.\.|Hentikan Suara/gi, '')
+    .replace(/\|/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   if (!rawText) return;
 
-  const origHtml = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Memuat Suara...';
   }
 
+  const controller = new AbortController();
+  const abortTimer = setTimeout(() => controller.abort(), 7500);
+
   try {
     const res = await fetch('/api/voice', {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'tts', text: rawText })
     });
+    clearTimeout(abortTimer);
 
     const data = await res.json();
     if (res.ok && data.audioBase64) {
       currentTtsAudio = new Audio(data.audioBase64);
       currentTtsAudio.onended = () => {
+        currentTtsAudio = null;
         if (btn) btn.innerHTML = '<i class="fas fa-volume-high mr-1"></i>Dengarkan Audio';
       };
       await currentTtsAudio.play();
       if (btn) btn.innerHTML = '<i class="fas fa-stop mr-1 text-rose-400"></i>Hentikan Suara';
     } else {
-      // Fallback otomatis ke suara browser jika ELEVENLABS_API_KEY belum diisi
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(rawText.slice(0, 600));
-        utter.lang = 'id-ID';
-        window.speechSynthesis.speak(utter);
-        if (typeof showToast === 'function') showToast('Memutar suara via Audio Perangkat', 'info');
-      } else {
-        throw new Error(data.error || 'Audio tidak tersedia.');
-      }
-      if (btn) btn.innerHTML = origHtml;
+      speakWithDeviceFallback(rawText, btn);
     }
-  } catch (err) {
-    if (typeof showToast === 'function') showToast(err.message, 'error');
-    if (btn) btn.innerHTML = origHtml;
+  } catch (_) {
+    clearTimeout(abortTimer);
+    speakWithDeviceFallback(rawText, btn);
   } finally {
     if (btn) btn.disabled = false;
   }
