@@ -140,6 +140,7 @@ function updateChartsAndStats() {
 
   renderPairList(m.pairStats);
   renderSessionList(m.sessionStats);
+  if (typeof evaluateDailyLossLimit === 'function') evaluateDailyLossLimit(m.running);
   renderChart(m.labels, m.equityHistory);
 }
 
